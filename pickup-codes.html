@@ -806,24 +806,24 @@ input, textarea { font-family: inherit; }
     </div>
 
     <div class="form-group">
-      <label class="form-label" id="codeLabel">取件码（每行一个，8位数字自动格式化）</label>
-      <textarea class="textarea-field" id="inputCode" placeholder="如：12345678&#10;可一次输入多行" rows="3"></textarea>
+      <label class="form-label" id="codeLabel">取件码</label>
+      <textarea class="textarea-field" id="inputCode" placeholder="每行一个" rows="3"></textarea>
     </div>
 
-    <div class="form-group">
+    <div class="form-group" id="locationGroup">
       <label class="form-label">地点</label>
       <div class="location-tags" id="locationTags"></div>
-      <input type="text" class="input-field" id="inputLocation" placeholder="或输入自定义地点" style="margin-top:8px;">
+      <input type="text" class="input-field" id="inputLocation" placeholder="自定义地点" style="margin-top:8px;">
     </div>
 
     <div class="form-group">
       <label class="form-label">收件人</label>
-      <input type="text" class="input-field" id="inputRecipient" placeholder="收件人姓名">
+      <input type="text" class="input-field" id="inputRecipient" placeholder="收件人">
     </div>
 
     <div class="form-group">
       <label class="form-label">备注</label>
-      <input type="text" class="input-field" id="inputNote" placeholder="备注信息">
+      <input type="text" class="input-field" id="inputNote" placeholder="备注">
     </div>
   </div>
   <div class="sheet-footer">
@@ -1500,14 +1500,17 @@ function setFormType(type) {
   
   var codeLabel = document.getElementById('codeLabel');
   var submitBtn = document.getElementById('formSubmitBtn');
+  var locationGroup = document.getElementById('locationGroup');
   if (type === 'send') {
-    codeLabel.textContent = '寄件码（每行一个）';
+    codeLabel.textContent = '寄件码';
     submitBtn.classList.remove('btn-primary');
     submitBtn.classList.add('btn-purple');
+    locationGroup.style.display = 'none';
   } else {
-    codeLabel.textContent = '取件码（每行一个，8位数字自动格式化）';
+    codeLabel.textContent = '取件码';
     submitBtn.classList.remove('btn-purple');
     submitBtn.classList.add('btn-primary');
+    locationGroup.style.display = '';
   }
 }
 
