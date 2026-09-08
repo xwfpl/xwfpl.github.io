@@ -943,25 +943,8 @@
     syncing = true; setSyncStatus('busy');
     try {
       var cloud = await apiGet();
-      // Places sync: if local and cloud differ, local wins (user just changed it)
-      var cloudP = (Array.isArray(cloud.places) && cloud.places.length > 0) ? cloud.places : null;
-      if (cloudP) {
-        // Merge: start with local, add any cloud-only places
-        var mergedP = places.slice();
-        for (var pi = 0; pi < cloudP.length; pi++) {
-          if (mergedP.indexOf(cloudP[pi]) === -1) {
-            mergedP.push(cloudP[pi]);
-          }
-        }
-        if (JSON.stringify(mergedP) !== JSON.stringify(places)) {
-          places = mergedP;
-          savePlacesLocal(); renderLocTags(); syncLocTags();
-        }
-      } else if (places.length === 0) {
-        // First time: use defaults
-        places = DEFAULT_PLACES.slice();
-        savePlacesLocal(); renderLocTags();
-      }
+      // Places: local is always the authority. Never add back deleted places from cloud.
+      // Just download cloud records, but keep local places as-is.
       var merged = mergeRecords(records, cloud.records || []);
       var sig = function(arr) { return JSON.stringify(arr.slice().sort(function(a, b) { return a.id < b.id ? -1 : 1; })); };
       if (sig(merged) !== sig(records)) {
