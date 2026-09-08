@@ -1,0 +1,2342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>取件码小本本</title>
+<style>
+:root {
+  --primary: #ff6a00;
+  --primary-dark: #e05500;
+  --primary-light: #fff1e6;
+  --green: #10a54a;
+  --green-light: #e8f8ee;
+  --text: #23272f;
+  --text-2: #6b7280;
+  --text-3: #9ca3af;
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --border: #eceef2;
+  --danger: #e5484d;
+  --radius: 14px;
+  --shadow: 0 2px 10px rgba(30, 35, 45, .06);
+  /* 寄件码紫色系 */
+  --purple: #8b5cf6;
+  --purple-dark: #6d28d9;
+  --purple-light: #f1ebff;
+  --purple-bg: #f8f5ff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+body { min-height: 100vh; padding-bottom: 80px; }
+
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea { font-family: inherit; }
+
+/* ============ Header ============ */
+.app-header {
+  background: linear-gradient(135deg, #ff6a00 0%, #ff8533 100%);
+  padding: 16px 16px 0;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(255, 106, 0, .25);
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.header-logo {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.header-title {
+  font-size: 19px;
+  font-weight: 700;
+  flex: 1;
+  letter-spacing: .5px;
+}
+
+.sync-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,.22);
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background .2s;
+  white-space: nowrap;
+}
+.sync-capsule:active { background: rgba(255,255,255,.35); }
+.sync-capsule .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74,222,128,.8);
+}
+.sync-capsule.syncing .dot { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,.8); animation: pulse 1s infinite; }
+.sync-capsule.offline .dot { background: #f87171; box-shadow: none; }
+.sync-capsule.local .dot { background: #d1d5db; box-shadow: none; }
+
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+.header-tools-btn {
+  background: rgba(255,255,255,.2);
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  font-size: 17px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s;
+}
+.header-tools-btn:active { background: rgba(255,255,255,.35); }
+
+/* ============ Stats ============ */
+.stats-row {
+  display: flex;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.stat-card {
+  flex: 1;
+  background: rgba(255,255,255,.18);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat-icon { font-size: 22px; }
+.stat-info { display: flex; flex-direction: column; }
+.stat-num { font-size: 22px; font-weight: 800; line-height: 1.1; }
+.stat-label { font-size: 11px; opacity: .85; }
+
+/* ============ Tabs ============ */
+.tab-bar {
+  display: flex;
+  background: var(--card);
+  padding: 0 6px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab-item {
+  flex: 1;
+  min-width: 70px;
+  padding: 12px 6px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+  border-bottom: 3px solid transparent;
+  transition: all .2s;
+  position: relative;
+  white-space: nowrap;
+}
+.tab-item.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+.tab-item .tab-badge {
+  display: inline-block;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  margin-left: 3px;
+  vertical-align: top;
+}
+.tab-item.active .tab-badge { background: var(--primary); color: #fff; }
+
+/* ============ List ============ */
+.list-container { padding: 12px 12px 20px; }
+
+.location-group {
+  background: var(--card);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s;
+}
+.group-header:active { background: var(--bg); }
+
+.group-toggle {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .25s;
+  color: var(--text-3);
+  font-size: 12px;
+  margin-right: 4px;
+}
+.location-group.collapsed .group-toggle { transform: rotate(-90deg); }
+
+.group-name {
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.group-count {
+  background: var(--bg);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 12px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.group-body {
+  transition: max-height .3s ease, opacity .2s;
+  overflow: hidden;
+}
+.location-group.collapsed .group-body {
+  max-height: 0 !important;
+  opacity: 0;
+}
+
+/* ============ Record Card ============ */
+.record-card {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  gap: 12px;
+  position: relative;
+  transition: background .15s;
+}
+.record-card:active { background: var(--bg); }
+.record-card.is-send { background: var(--purple-bg); }
+.record-card.is-send:active { background: var(--purple-light); }
+.record-card.is-error { opacity: .65; }
+.record-card.is-taken { opacity: .7; }
+
+.card-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 0;
+  border-radius: 8px;
+  flex-shrink: 0;
+  text-align: center;
+  line-height: 1.3;
+}
+.card-status.st-pending { background: var(--primary-light); color: var(--primary); }
+.card-status.st-taken { background: var(--green-light); color: var(--green); }
+.card-status.st-send { background: var(--purple-light); color: var(--purple-dark); }
+.card-status.st-error { background: #fee2e2; color: var(--danger); }
+
+.card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-code {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text);
+  line-height: 1.2;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+}
+.card-code.is-send { color: var(--purple-dark); }
+
+.card-sub {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.card-sub .sub-recipient { font-weight: 600; color: var(--text); }
+.card-sub .sub-note { color: var(--text-3); }
+.card-sub .sub-dot { color: var(--text-3); }
+
+.card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.card-btn {
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all .15s;
+  text-align: center;
+}
+.card-btn:active { transform: scale(.93); }
+.card-btn.btn-take {
+  background: var(--green);
+  color: #fff;
+}
+.card-btn.btn-receive {
+  background: var(--purple);
+  color: #fff;
+}
+.card-btn.btn-taken {
+  background: var(--green-light);
+  color: var(--green);
+}
+.card-btn.btn-received {
+  background: var(--purple-light);
+  color: var(--purple-dark);
+}
+.card-btn.btn-restore {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* ============ Empty State ============ */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-3);
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: .4; }
+.empty-state .empty-text { font-size: 14px; }
+
+/* ============ Floating Button ============ */
+.fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff6a00, #ff8533);
+  color: #fff;
+  font-size: 28px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 20px rgba(255,106,0,.4);
+  z-index: 80;
+  transition: transform .2s;
+  user-select: none;
+}
+.fab:active { transform: scale(.9); }
+
+/* ============ Bottom Sheet / Dialog ============ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+.overlay.show { opacity: 1; pointer-events: auto; }
+
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  z-index: 201;
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(.32,.72,0,1);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.bottom-sheet.show { transform: translateY(0); }
+
+.sheet-handle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 8px auto 4px;
+  flex-shrink: 0;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sheet-title { font-size: 17px; font-weight: 700; flex: 1; }
+.sheet-close {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  font-size: 18px;
+  color: var(--text-2);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.sheet-close:active { background: var(--bg); }
+
+.sheet-body {
+  padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+}
+
+.sheet-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ============ Form Elements ============ */
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 6px;
+}
+
+.type-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.type-switch-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 2px solid var(--border);
+  transition: all .2s;
+  background: var(--card);
+  color: var(--text-2);
+}
+.type-switch-btn.active.pickup {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.type-switch-btn.active.send {
+  border-color: var(--purple);
+  background: var(--purple-light);
+  color: var(--purple-dark);
+}
+
+.input-field, .textarea-field {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  font-size: 15px;
+  transition: border-color .2s;
+  background: var(--card);
+  color: var(--text);
+}
+.input-field:focus, .textarea-field:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.textarea-field {
+  resize: vertical;
+  min-height: 80px;
+  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  line-height: 1.6;
+}
+
+.location-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.loc-tag {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 2px solid var(--border);
+  transition: all .15s;
+  color: var(--text-2);
+}
+.loc-tag:active { transform: scale(.95); }
+.loc-tag.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.loc-tag.is-send-tag.active {
+  border-color: var(--purple);
+  background: var(--purple-light);
+  color: var(--purple-dark);
+}
+
+/* ============ Buttons ============ */
+.btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  transition: all .15s;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-secondary { background: var(--bg); color: var(--text-2); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-purple { background: var(--purple); color: #fff; }
+
+/* ============ Action Menu (Long press) ============ */
+.action-menu .sheet-body { padding: 8px 16px 16px; }
+.action-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 8px;
+  font-size: 15px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+  width: 100%;
+  text-align: left;
+}
+.action-menu-item:last-child { border-bottom: none; }
+.action-menu-item:active { background: var(--bg); }
+.action-menu-item .ami-icon { font-size: 18px; width: 24px; text-align: center; }
+.action-menu-item.danger { color: var(--danger); }
+
+/* ============ Big Code Display ============ */
+.big-code-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.92);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+  padding: 24px;
+}
+.big-code-overlay.show { opacity: 1; pointer-events: auto; }
+
+.big-code-label {
+  color: rgba(255,255,255,.5);
+  font-size: 14px;
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+.big-code-text {
+  font-size: clamp(48px, 14vw, 96px);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 4px;
+  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  text-align: center;
+  line-height: 1.1;
+}
+.big-code-sub {
+  color: rgba(255,255,255,.6);
+  font-size: 16px;
+  margin-top: 16px;
+  text-align: center;
+}
+.big-code-close-hint {
+  color: rgba(255,255,255,.35);
+  font-size: 13px;
+  margin-top: 40px;
+}
+
+/* ============ Confirm Dialog ============ */
+.confirm-dialog {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(.9);
+  background: var(--card);
+  border-radius: 16px;
+  z-index: 250;
+  width: 300px;
+  max-width: 85vw;
+  padding: 24px 20px 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all .25s cubic-bezier(.32,.72,0,1);
+}
+.confirm-dialog.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+.confirm-title { font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+.confirm-msg { font-size: 14px; color: var(--text-2); text-align: center; margin-bottom: 20px; line-height: 1.6; }
+.confirm-buttons { display: flex; gap: 10px; }
+.confirm-buttons .btn { padding: 10px; font-size: 14px; }
+
+/* ============ Toast ============ */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(35,39,47,.92);
+  color: #fff;
+  padding: 10px 22px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 400;
+  opacity: 0;
+  pointer-events: none;
+  transition: all .3s cubic-bezier(.32,.72,0,1);
+  white-space: nowrap;
+  max-width: 90vw;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast.toast-error { background: var(--danger); }
+.toast.toast-success { background: var(--green); }
+
+/* ============ Location Management ============ */
+.loc-mgmt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.loc-mgmt-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: 10px;
+  gap: 10px;
+}
+.loc-mgmt-item .lmi-name { flex: 1; font-weight: 600; font-size: 14px; }
+.loc-mgmt-item .lmi-del {
+  color: var(--danger);
+  font-size: 18px;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  transition: background .15s;
+}
+.loc-mgmt-item .lmi-del:active { background: #fee2e2; }
+.loc-mgmt-add {
+  display: flex;
+  gap: 8px;
+}
+.loc-mgmt-add .input-field { flex: 1; }
+.loc-mgmt-add .btn { flex: none; padding: 12px 18px; }
+
+/* ============ Settings Dialog ============ */
+.settings-field { margin-bottom: 14px; }
+.settings-field .sf-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.settings-field .input-field { font-size: 14px; font-family: 'SF Mono', Consolas, monospace; }
+.settings-info {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 12px;
+  line-height: 1.6;
+  background: var(--bg);
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.settings-mode-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.mode-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid var(--border);
+  transition: all .2s;
+  color: var(--text-2);
+}
+.mode-btn.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* ============ Tools Menu ============ */
+.tools-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 8px;
+  font-size: 15px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+  width: 100%;
+  text-align: left;
+}
+.tools-menu-item:last-child { border-bottom: none; }
+.tools-menu-item:active { background: var(--bg); }
+.tools-menu-item .tmi-icon { font-size: 18px; width: 24px; text-align: center; }
+
+/* ============ Responsive ============ */
+@media (min-width: 600px) {
+  .list-container { max-width: 600px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+  .app-header > * { max-width: 600px; margin-left: auto; margin-right: auto; }
+  .tab-bar { max-width: 600px; margin: 0 auto; }
+  .fab { right: calc(50% - 300px + 24px); }
+}
+
+/* hidden file input */
+#fileInput { display: none; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="app-header">
+  <div class="header-top">
+    <span class="header-logo">📦</span>
+    <span class="header-title">取件码小本本</span>
+    <span class="sync-capsule" id="syncCapsule" onclick="manualSync()">
+      <span class="dot"></span>
+      <span id="syncText">未连接</span>
+    </span>
+    <button class="header-tools-btn" onclick="openToolsMenu()">🧰</button>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-icon">📬</span>
+      <div class="stat-info">
+        <span class="stat-num" id="statPending">0</span>
+        <span class="stat-label">待取件</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">📮</span>
+      <div class="stat-info">
+        <span class="stat-num" id="statSend">0</span>
+        <span class="stat-label">寄件码</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Tabs -->
+<nav class="tab-bar" id="tabBar">
+  <div class="tab-item active" data-tab="pending" onclick="switchTab('pending')">待取<span class="tab-badge" id="badgePending">0</span></div>
+  <div class="tab-item" data-tab="taken" onclick="switchTab('taken')">已取<span class="tab-badge" id="badgeTaken">0</span></div>
+  <div class="tab-item" data-tab="send" onclick="switchTab('send')">寄件码<span class="tab-badge" id="badgeSend">0</span></div>
+  <div class="tab-item" data-tab="error" onclick="switchTab('error')">错误<span class="tab-badge" id="badgeError">0</span></div>
+</nav>
+
+<!-- List -->
+<div class="list-container" id="listContainer">
+</div>
+
+<!-- Floating Add Button -->
+<button class="fab" onclick="openAddForm()">＋</button>
+
+<!-- ============ Add/Edit Form Sheet ============ -->
+<div class="overlay" id="overlayForm" onclick="closeSheet('form')"></div>
+<div class="bottom-sheet" id="sheetForm">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <span class="sheet-title" id="formTitle">添加取件码</span>
+    <button class="sheet-close" onclick="closeSheet('form')">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="type-switch" id="typeSwitch">
+      <button class="type-switch-btn active pickup" data-type="pickup" onclick="setFormType('pickup')">取件码</button>
+      <button class="type-switch-btn send" data-type="send" onclick="setFormType('send')">寄件码</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" id="codeLabel">取件码（每行一个，8位数字自动格式化）</label>
+      <textarea class="textarea-field" id="inputCode" placeholder="如：12345678&#10;可一次输入多行" rows="3"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">地点</label>
+      <div class="location-tags" id="locationTags"></div>
+      <input type="text" class="input-field" id="inputLocation" placeholder="或输入自定义地点" style="margin-top:8px;">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">收件人</label>
+      <input type="text" class="input-field" id="inputRecipient" placeholder="收件人姓名">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">备注</label>
+      <input type="text" class="input-field" id="inputNote" placeholder="备注信息">
+    </div>
+  </div>
+  <div class="sheet-footer">
+    <button class="btn btn-secondary" onclick="closeSheet('form')">取消</button>
+    <button class="btn btn-primary" id="formSubmitBtn" onclick="submitForm()">保存</button>
+  </div>
+</div>
+
+<!-- ============ Location Management Sheet ============ -->
+<div class="overlay" id="overlayLocMgmt" onclick="closeSheet('locMgmt')"></div>
+<div class="bottom-sheet" id="sheetLocMgmt">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <span class="sheet-title">地点管理</span>
+    <button class="sheet-close" onclick="closeSheet('locMgmt')">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="loc-mgmt-list" id="locMgmtList"></div>
+    <div class="loc-mgmt-add">
+      <input type="text" class="input-field" id="newLocInput" placeholder="输入新地点名称">
+      <button class="btn btn-primary" onclick="addLocation()">添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Action Menu (Long Press) ============ -->
+<div class="overlay" id="overlayAction" onclick="closeSheet('action')"></div>
+<div class="bottom-sheet action-menu" id="sheetAction">
+  <div class="sheet-handle"></div>
+  <div class="sheet-body" id="actionMenuBody">
+  </div>
+</div>
+
+<!-- ============ Tools Menu ============ -->
+<div class="overlay" id="overlayTools" onclick="closeSheet('tools')"></div>
+<div class="bottom-sheet" id="sheetTools">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <span class="sheet-title">工具箱</span>
+    <button class="sheet-close" onclick="closeSheet('tools')">✕</button>
+  </div>
+  <div class="sheet-body">
+    <button class="tools-menu-item" onclick="closeSheet('tools'); openSettings()">
+      <span class="tmi-icon">☁️</span><span>GitHub云同步设置</span>
+    </button>
+    <button class="tools-menu-item" onclick="closeSheet('tools'); openLocMgmt()">
+      <span class="tmi-icon">📍</span><span>地点管理</span>
+    </button>
+    <button class="tools-menu-item" onclick="closeSheet('tools'); exportJSON()">
+      <span class="tmi-icon">📤</span><span>导出JSON备份</span>
+    </button>
+    <button class="tools-menu-item" onclick="closeSheet('tools'); document.getElementById('fileInput').click()">
+      <span class="tmi-icon">📥</span><span>导入JSON备份</span>
+    </button>
+    <button class="tools-menu-item" onclick="closeSheet('tools'); clearCompleted()">
+      <span class="tmi-icon">🧹</span><span>清空已完成记录</span>
+    </button>
+    <button class="tools-menu-item" onclick="closeSheet('tools'); manualSync()">
+      <span class="tmi-icon">🔄</span><span>手动同步</span>
+    </button>
+  </div>
+</div>
+<input type="file" id="fileInput" accept=".json" onchange="importJSON(event)">
+
+<!-- ============ Settings Sheet ============ -->
+<div class="overlay" id="overlaySettings" onclick="closeSheet('settings')"></div>
+<div class="bottom-sheet" id="sheetSettings">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <span class="sheet-title">GitHub 云同步</span>
+    <button class="sheet-close" onclick="closeSheet('settings')">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="settings-mode-toggle">
+      <button class="mode-btn active" id="modeCloud" onclick="setSyncMode('cloud')">☁️ 云同步</button>
+      <button class="mode-btn" id="modeLocal" onclick="setSyncMode('local')">💾 本地模式</button>
+    </div>
+
+    <div class="settings-field">
+      <div class="sf-label">Personal Access Token</div>
+      <input type="password" class="input-field" id="cfgToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+    </div>
+    <div class="settings-field">
+      <div class="sf-label">Owner（用户名）</div>
+      <input type="text" class="input-field" id="cfgOwner" placeholder="xwfpl">
+    </div>
+    <div class="settings-field">
+      <div class="sf-label">Repo（仓库名）</div>
+      <input type="text" class="input-field" id="cfgRepo" placeholder="xwfpl.github.io">
+    </div>
+    <div class="settings-field">
+      <div class="sf-label">Branch（分支）</div>
+      <input type="text" class="input-field" id="cfgBranch" placeholder="main">
+    </div>
+    <div class="settings-field">
+      <div class="sf-label">Data File（数据文件路径）</div>
+      <input type="text" class="input-field" id="cfgDataFile" placeholder="pickup-data.json">
+    </div>
+    <div class="settings-info">
+      ℹ️ Token 仅保存在浏览器 localStorage 中，不会上传到任何第三方服务器。需要创建具有 repo 权限的 Personal Access Token。
+    </div>
+  </div>
+  <div class="sheet-footer">
+    <button class="btn btn-secondary" onclick="closeSheet('settings')">取消</button>
+    <button class="btn btn-primary" onclick="saveSettings()">保存并连接</button>
+  </div>
+</div>
+
+<!-- ============ Big Code Display ============ -->
+<div class="big-code-overlay" id="bigCodeOverlay" onclick="closeBigCode()">
+  <div class="big-code-label" id="bigCodeLabel">取件码</div>
+  <div class="big-code-text" id="bigCodeText">---- ----</div>
+  <div class="big-code-sub" id="bigCodeSub"></div>
+  <div class="big-code-close-hint">点击任意位置关闭</div>
+</div>
+
+<!-- ============ Confirm Dialog ============ -->
+<div class="overlay" id="overlayConfirm" onclick="cancelConfirm()"></div>
+<div class="confirm-dialog" id="confirmDialog">
+  <div class="confirm-title" id="confirmTitle">确认</div>
+  <div class="confirm-msg" id="confirmMsg">确定要执行此操作吗？</div>
+  <div class="confirm-buttons">
+    <button class="btn btn-secondary" id="confirmCancelBtn" onclick="cancelConfirm()">取消</button>
+    <button class="btn btn-primary" id="confirmOkBtn">确定</button>
+  </div>
+</div>
+
+<!-- ============ Toast ============ -->
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ============ Config & State ============
+var DEFAULT_CONFIG = {
+  owner: 'xwfpl',
+  repo: 'xwfpl.github.io',
+  branch: 'main',
+  dataFile: 'pickup-data.json',
+  token: '',
+  syncMode: 'cloud' // 'cloud' or 'local'
+};
+
+var DEFAULT_LOCATIONS = ['供电', '物业', '富乐C', '房管711', '寄件码'];
+
+var state = {
+  records: [],
+  locations: [],
+  config: {},
+  currentTab: 'pending',
+  collapsedGroups: {},
+  formType: 'pickup',
+  editingId: null,
+  selectedLocation: '',
+  syncStatus: 'offline', // 'synced', 'syncing', 'offline', 'local'
+  saveTimer: null,
+  longPressTimer: null,
+  longPressTarget: null
+};
+
+// ============ Utility Functions ============
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
+}
+
+function now() { return new Date().toISOString(); }
+
+// UTF-8 safe Base64 encode
+function utf8ToBase64(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+// UTF-8 safe Base64 decode
+function base64ToUtf8(b64) {
+  try {
+    return decodeURIComponent(escape(atob(b64)));
+  } catch(e) {
+    return atob(b64);
+  }
+}
+
+// Format 8-digit code to 1111-1111
+function formatCode(code) {
+  if (!code) return '';
+  var digits = String(code).replace(/\D/g, '');
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 8) return digits.slice(0,4) + '-' + digits.slice(4);
+  // More than 8 digits (for send codes etc.)
+  var parts = [];
+  for (var i = 0; i < digits.length; i += 4) {
+    parts.push(digits.slice(i, i+4));
+  }
+  return parts.join('-');
+}
+
+// Parse multi-line input into individual codes
+function parseMultiLineCodes(text) {
+  if (!text) return [];
+  var lines = text.split(/\n/);
+  var codes = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    // Extract digits
+    var digits = line.replace(/\D/g, '');
+    if (digits.length > 0) {
+      codes.push(line);
+    }
+  }
+  return codes;
+}
+
+// ============ Storage ============
+
+function loadConfig() {
+  try {
+    var saved = localStorage.getItem('pickup_config');
+    if (saved) {
+      state.config = JSON.parse(saved);
+    } else {
+      state.config = Object.assign({}, DEFAULT_CONFIG);
+    }
+  } catch(e) {
+    state.config = Object.assign({}, DEFAULT_CONFIG);
+  }
+  // Merge defaults
+  for (var k in DEFAULT_CONFIG) {
+    if (state.config[k] === undefined) {
+      state.config[k] = DEFAULT_CONFIG[k];
+    }
+  }
+}
+
+function saveConfig() {
+  localStorage.setItem('pickup_config', JSON.stringify(state.config));
+}
+
+function loadLocations() {
+  try {
+    var saved = localStorage.getItem('pickup_locations');
+    if (saved) {
+      state.locations = JSON.parse(saved);
+    } else {
+      state.locations = DEFAULT_LOCATIONS.slice();
+    }
+  } catch(e) {
+    state.locations = DEFAULT_LOCATIONS.slice();
+  }
+}
+
+function saveLocations() {
+  localStorage.setItem('pickup_locations', JSON.stringify(state.locations));
+}
+
+function loadLocalRecords() {
+  try {
+    var saved = localStorage.getItem('pickup_records');
+    if (saved) {
+      state.records = JSON.parse(saved);
+    }
+  } catch(e) {
+    state.records = [];
+  }
+}
+
+function saveLocalRecords() {
+  localStorage.setItem('pickup_records', JSON.stringify(state.records));
+}
+
+// ============ GitHub Sync ============
+
+function getApiBase() {
+  return 'https://api.github.com/repos/' + state.config.owner + '/' + state.config.repo + '/contents/' + state.config.dataFile;
+}
+
+function hasCloudConfig() {
+  return state.config.token && state.config.token.length > 0;
+}
+
+function setSyncStatus(status) {
+  state.syncStatus = status;
+  var capsule = document.getElementById('syncCapsule');
+  var text = document.getElementById('syncText');
+  capsule.classList.remove('syncing', 'offline', 'local');
+  switch(status) {
+    case 'synced':
+      text.textContent = '已同步';
+      break;
+    case 'syncing':
+      capsule.classList.add('syncing');
+      text.textContent = '同步中';
+      break;
+    case 'offline':
+      capsule.classList.add('offline');
+      text.textContent = '未连接';
+      break;
+    case 'local':
+      capsule.classList.add('local');
+      text.textContent = '本地模式';
+      break;
+  }
+}
+
+function githubHeaders() {
+  return {
+    'Authorization': 'Bearer ' + state.config.token,
+    'Accept': 'application/vnd.github+json',
+    'Content-Type': 'application/json'
+  };
+}
+
+async function fetchGitHubData() {
+  if (!hasCloudConfig()) {
+    setSyncStatus('offline');
+    return null;
+  }
+  setSyncStatus('syncing');
+  try {
+    var url = getApiBase() + '?ref=' + encodeURIComponent(state.config.branch);
+    var resp = await fetch(url, {
+      method: 'GET',
+      headers: githubHeaders()
+    });
+    if (resp.status === 404) {
+      // File doesn't exist yet, that's ok
+      setSyncStatus('synced');
+      return { content: null, sha: null };
+    }
+    if (!resp.ok) {
+      throw new Error('GitHub API error: ' + resp.status);
+    }
+    var data = await resp.json();
+    setSyncStatus('synced');
+    var content = data.content ? base64ToUtf8(data.content.replace(/\n/g, '')) : null;
+    return { content: content, sha: data.sha };
+  } catch(e) {
+    console.error('Fetch GitHub error:', e);
+    setSyncStatus('offline');
+    showToast('同步失败: ' + e.message, 'error');
+    return null;
+  }
+}
+
+async function saveGitHubData(records, sha) {
+  if (!hasCloudConfig()) {
+    setSyncStatus('offline');
+    return false;
+  }
+  setSyncStatus('syncing');
+  try {
+    var content = utf8ToBase64(JSON.stringify(records, null, 2));
+    var body = {
+      message: 'Update pickup codes ' + new Date().toISOString(),
+      content: content,
+      branch: state.config.branch
+    };
+    if (sha) {
+      body.sha = sha;
+    }
+    var resp = await fetch(getApiBase(), {
+      method: 'PUT',
+      headers: githubHeaders(),
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) {
+      var errData = await resp.json().catch(function(){ return {}; });
+      throw new Error(errData.message || ('HTTP ' + resp.status));
+    }
+    var data = await resp.json();
+    setSyncStatus('synced');
+    currentSha = data.content ? data.content.sha : sha;
+    return true;
+  } catch(e) {
+    console.error('Save GitHub error:', e);
+    setSyncStatus('offline');
+    showToast('保存失败: ' + e.message, 'error');
+    return false;
+  }
+}
+
+var currentSha = null;
+
+// Merge records: same id takes newer updatedAt
+function mergeRecords(localRecords, remoteRecords) {
+  if (!remoteRecords || remoteRecords.length === 0) return localRecords.slice();
+  var merged = {};
+  var allIds = {};
+  // Add local
+  for (var i = 0; i < localRecords.length; i++) {
+    var r = localRecords[i];
+    merged[r.id] = r;
+    allIds[r.id] = true;
+  }
+  // Merge remote
+  for (var j = 0; j < remoteRecords.length; j++) {
+    var rr = remoteRecords[j];
+    allIds[rr.id] = true;
+    if (!merged[rr.id]) {
+      merged[rr.id] = rr;
+    } else {
+      var local = merged[rr.id];
+      var localTime = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+      var remoteTime = rr.updatedAt ? new Date(rr.updatedAt).getTime() : 0;
+      if (remoteTime > localTime) {
+        merged[rr.id] = rr;
+      }
+    }
+  }
+  var result = [];
+  for (var id in merged) {
+    result.push(merged[id]);
+  }
+  // Sort by createdAt desc
+  result.sort(function(a,b) {
+    var ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    var tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return tb - ta;
+  });
+  return result;
+}
+
+async function pullFromGitHub() {
+  if (state.config.syncMode === 'local') {
+    setSyncStatus('local');
+    return;
+  }
+  if (!hasCloudConfig()) {
+    setSyncStatus('offline');
+    // Show settings on first load
+    openSettings();
+    return;
+  }
+  var result = await fetchGitHubData();
+  if (result === null) return;
+  if (result.content) {
+    try {
+      var remoteRecords = JSON.parse(result.content);
+      if (Array.isArray(remoteRecords)) {
+        state.records = mergeRecords(state.records, remoteRecords);
+        saveLocalRecords();
+        currentSha = result.sha;
+        render();
+      }
+    } catch(e) {
+      console.error('Parse remote data error:', e);
+    }
+  } else {
+    currentSha = result.sha;
+  }
+}
+
+// Debounced save
+function debouncedSave() {
+  if (state.config.syncMode === 'local') {
+    saveLocalRecords();
+    setSyncStatus('local');
+    return;
+  }
+  if (!hasCloudConfig()) {
+    saveLocalRecords();
+    setSyncStatus('offline');
+    return;
+  }
+  saveLocalRecords();
+  if (state.saveTimer) clearTimeout(state.saveTimer);
+  state.saveTimer = setTimeout(async function() {
+    await saveGitHubData(state.records, currentSha);
+  }, 1200);
+}
+
+async function manualSync() {
+  if (state.config.syncMode === 'local') {
+    setSyncStatus('local');
+    showToast('当前为本地模式');
+    return;
+  }
+  if (!hasCloudConfig()) {
+    setSyncStatus('offline');
+    openSettings();
+    return;
+  }
+  showToast('正在同步...');
+  await pullFromGitHub();
+  // Also push local changes
+  if (hasCloudConfig()) {
+    await saveGitHubData(state.records, currentSha);
+  }
+  showToast('同步完成', 'success');
+}
+
+// ============ Data Operations ============
+
+function getActiveRecords() {
+  return state.records.filter(function(r) { return !r.deleted; });
+}
+
+function getRecordsForTab(tab) {
+  var active = getActiveRecords();
+  switch(tab) {
+    case 'pending':
+      return active.filter(function(r) { return r.type === 'pickup' && !r.takenAt && !r.errAt; });
+    case 'taken':
+      return active.filter(function(r) { return r.type === 'pickup' && r.takenAt && !r.errAt; });
+    case 'send':
+      return active.filter(function(r) { return r.type === 'send' && !r.errAt; });
+    case 'error':
+      return active.filter(function(r) { return r.errAt; });
+    default:
+      return [];
+  }
+}
+
+function groupByLocation(records) {
+  var groups = {};
+  var order = [];
+  for (var i = 0; i < records.length; i++) {
+    var r = records[i];
+    var loc = r.location || '未分组';
+    if (!groups[loc]) {
+      groups[loc] = [];
+      order.push(loc);
+    }
+    groups[loc].push(r);
+  }
+  // Sort: '寄件码' first, then by group size desc, then alphabetical
+  order.sort(function(a, b) {
+    if (a === '寄件码' && b !== '寄件码') return -1;
+    if (b === '寄件码' && a !== '寄件码') return 1;
+    if (groups[a].length !== groups[b].length) {
+      return groups[b].length - groups[a].length;
+    }
+    return a.localeCompare(b);
+  });
+  return { groups: groups, order: order };
+}
+
+function findRecord(id) {
+  for (var i = 0; i < state.records.length; i++) {
+    if (state.records[i].id === id) return state.records[i];
+  }
+  return null;
+}
+
+function updateRecord(id, updates) {
+  for (var i = 0; i < state.records.length; i++) {
+    if (state.records[i].id === id) {
+      Object.assign(state.records[i], updates);
+      state.records[i].updatedAt = now();
+      return state.records[i];
+    }
+  }
+  return null;
+}
+
+// ============ Actions ============
+
+function toggleTaken(id) {
+  var r = findRecord(id);
+  if (!r) return;
+  if (r.takenAt) {
+    updateRecord(id, { takenAt: null });
+    showToast('已恢复待取');
+  } else {
+    updateRecord(id, { takenAt: now(), errAt: null });
+    showToast('已标记为已取', 'success');
+  }
+  debouncedSave();
+  render();
+}
+
+function toggleReceived(id) {
+  var r = findRecord(id);
+  if (!r) return;
+  if (r.takenAt) {
+    updateRecord(id, { takenAt: null });
+    showToast('已恢复未收');
+  } else {
+    updateRecord(id, { takenAt: now(), errAt: null });
+    showToast('已标记为已收', 'success');
+  }
+  debouncedSave();
+  render();
+}
+
+function markError(id) {
+  var r = findRecord(id);
+  if (!r) return;
+  if (r.errAt) {
+    updateRecord(id, { errAt: null });
+    showToast('已取消错误标记');
+  } else {
+    updateRecord(id, { errAt: now() });
+    showToast('已标记为错误', 'error');
+  }
+  debouncedSave();
+  render();
+}
+
+function deleteRecord(id) {
+  showConfirm('删除记录', '确定要删除这条记录吗？此操作不可撤销。', function() {
+    updateRecord(id, { deleted: true, deletedAt: now() });
+    debouncedSave();
+    render();
+    showToast('已删除');
+  });
+}
+
+function showBigCode(id) {
+  var r = findRecord(id);
+  if (!r) return;
+  var overlay = document.getElementById('bigCodeOverlay');
+  var labelText = document.getElementById('bigCodeLabel');
+  var codeText = document.getElementById('bigCodeText');
+  var subText = document.getElementById('bigCodeSub');
+  
+  labelText.textContent = r.type === 'send' ? '寄件码' : '取件码';
+  codeText.textContent = formatCode(r.code);
+  var subParts = [];
+  if (r.location) subParts.push(r.location);
+  if (r.recipient) subParts.push(r.recipient);
+  if (r.note) subParts.push(r.note);
+  subText.textContent = subParts.join(' · ');
+  
+  overlay.classList.add('show');
+}
+
+function closeBigCode() {
+  document.getElementById('bigCodeOverlay').classList.remove('show');
+}
+
+// ============ Form ============
+
+function openAddForm() {
+  state.editingId = null;
+  state.formType = 'pickup';
+  state.selectedLocation = '';
+  document.getElementById('formTitle').textContent = '添加取件码';
+  document.getElementById('inputCode').value = '';
+  document.getElementById('inputLocation').value = '';
+  document.getElementById('inputRecipient').value = '';
+  document.getElementById('inputNote').value = '';
+  setFormType('pickup');
+  renderLocationTags();
+  openSheet('form');
+  setTimeout(function() {
+    document.getElementById('inputCode').focus();
+  }, 350);
+}
+
+function openEditForm(id) {
+  var r = findRecord(id);
+  if (!r) return;
+  state.editingId = id;
+  state.formType = r.type || 'pickup';
+  state.selectedLocation = r.location || '';
+  document.getElementById('formTitle').textContent = '编辑记录';
+  document.getElementById('inputCode').value = formatCode(r.code);
+  document.getElementById('inputLocation').value = r.location || '';
+  document.getElementById('inputRecipient').value = r.recipient || '';
+  document.getElementById('inputNote').value = r.note || '';
+  setFormType(r.type || 'pickup');
+  renderLocationTags();
+  openSheet('form');
+}
+
+function setFormType(type) {
+  state.formType = type;
+  var btns = document.querySelectorAll('.type-switch-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.remove('active');
+  }
+  var activeBtn = document.querySelector('.type-switch-btn[data-type="' + type + '"]');
+  if (activeBtn) activeBtn.classList.add('active');
+  
+  var codeLabel = document.getElementById('codeLabel');
+  var submitBtn = document.getElementById('formSubmitBtn');
+  if (type === 'send') {
+    codeLabel.textContent = '寄件码（每行一个）';
+    submitBtn.classList.remove('btn-primary');
+    submitBtn.classList.add('btn-purple');
+  } else {
+    codeLabel.textContent = '取件码（每行一个，8位数字自动格式化）';
+    submitBtn.classList.remove('btn-purple');
+    submitBtn.classList.add('btn-primary');
+  }
+}
+
+function renderLocationTags() {
+  var container = document.getElementById('locationTags');
+  container.innerHTML = '';
+  for (var i = 0; i < state.locations.length; i++) {
+    var loc = state.locations[i];
+    var tag = document.createElement('button');
+    tag.className = 'loc-tag';
+    if (loc === '寄件码') tag.classList.add('is-send-tag');
+    if (loc === state.selectedLocation) tag.classList.add('active');
+    tag.textContent = loc;
+    tag.onclick = (function(location) {
+      return function() {
+        state.selectedLocation = location;
+        document.getElementById('inputLocation').value = location;
+        renderLocationTags();
+      };
+    })(loc);
+    container.appendChild(tag);
+  }
+}
+
+function submitForm() {
+  var codeText = document.getElementById('inputCode').value.trim();
+  var location = document.getElementById('inputLocation').value.trim();
+  var recipient = document.getElementById('inputRecipient').value.trim();
+  var note = document.getElementById('inputNote').value.trim();
+  
+  if (!codeText) {
+    showToast('请输入取件码', 'error');
+    return;
+  }
+  
+  var codes = parseMultiLineCodes(codeText);
+  if (codes.length === 0) {
+    showToast('请输入有效的取件码', 'error');
+    return;
+  }
+  
+  if (state.editingId) {
+    // Edit mode - update single record
+    var r = findRecord(state.editingId);
+    if (r) {
+      updateRecord(state.editingId, {
+        code: codes[0],
+        type: state.formType,
+        location: location || (state.formType === 'send' ? '寄件码' : ''),
+        recipient: recipient,
+        note: note
+      });
+      showToast('已更新', 'success');
+    }
+  } else {
+    // Add mode - may be multiple
+    for (var i = 0; i < codes.length; i++) {
+      var newRecord = {
+        id: genId(),
+        code: codes[i],
+        type: state.formType,
+        location: location || (state.formType === 'send' ? '寄件码' : ''),
+        recipient: recipient,
+        note: note,
+        createdAt: now(),
+        takenAt: null,
+        errAt: null,
+        updatedAt: now(),
+        deleted: false,
+        deletedAt: null
+      };
+      state.records.push(newRecord);
+    }
+    if (codes.length > 1) {
+      showToast('已添加 ' + codes.length + ' 条记录', 'success');
+    } else {
+      showToast('已添加', 'success');
+    }
+  }
+  
+  debouncedSave();
+  render();
+  closeSheet('form');
+}
+
+// ============ Location Management ============
+
+function openLocMgmt() {
+  renderLocMgmtList();
+  openSheet('locMgmt');
+}
+
+function renderLocMgmtList() {
+  var list = document.getElementById('locMgmtList');
+  list.innerHTML = '';
+  for (var i = 0; i < state.locations.length; i++) {
+    (function(loc, idx) {
+      var item = document.createElement('div');
+      item.className = 'loc-mgmt-item';
+      var name = document.createElement('span');
+      name.className = 'lmi-name';
+      name.textContent = loc;
+      var del = document.createElement('button');
+      del.className = 'lmi-del';
+      del.textContent = '🗑';
+      del.onclick = function() {
+        showConfirm('删除地点', '确定要删除地点"' + loc + '"吗？', function() {
+          state.locations.splice(idx, 1);
+          saveLocations();
+          renderLocMgmtList();
+          showToast('已删除');
+        });
+      };
+      item.appendChild(name);
+      item.appendChild(del);
+      list.appendChild(item);
+    })(state.locations[i], i);
+  }
+}
+
+function addLocation() {
+  var input = document.getElementById('newLocInput');
+  var name = input.value.trim();
+  if (!name) {
+    showToast('请输入地点名称', 'error');
+    return;
+  }
+  if (state.locations.indexOf(name) >= 0) {
+    showToast('该地点已存在', 'error');
+    return;
+  }
+  state.locations.push(name);
+  saveLocations();
+  input.value = '';
+  renderLocMgmtList();
+  showToast('已添加地点');
+}
+
+// ============ Settings ============
+
+function openSettings() {
+  document.getElementById('cfgToken').value = state.config.token || '';
+  document.getElementById('cfgOwner').value = state.config.owner || '';
+  document.getElementById('cfgRepo').value = state.config.repo || '';
+  document.getElementById('cfgBranch').value = state.config.branch || '';
+  document.getElementById('cfgDataFile').value = state.config.dataFile || '';
+  
+  // Set mode buttons
+  var modeCloud = document.getElementById('modeCloud');
+  var modeLocal = document.getElementById('modeLocal');
+  modeCloud.classList.remove('active');
+  modeLocal.classList.remove('active');
+  if (state.config.syncMode === 'local') {
+    modeLocal.classList.add('active');
+  } else {
+    modeCloud.classList.add('active');
+  }
+  
+  openSheet('settings');
+}
+
+function setSyncMode(mode) {
+  var modeCloud = document.getElementById('modeCloud');
+  var modeLocal = document.getElementById('modeLocal');
+  modeCloud.classList.remove('active');
+  modeLocal.classList.remove('active');
+  if (mode === 'local') {
+    modeLocal.classList.add('active');
+  } else {
+    modeCloud.classList.add('active');
+  }
+  // Don't save here, save when clicking "保存并连接"
+}
+
+function saveSettings() {
+  var token = document.getElementById('cfgToken').value.trim();
+  var owner = document.getElementById('cfgOwner').value.trim() || DEFAULT_CONFIG.owner;
+  var repo = document.getElementById('cfgRepo').value.trim() || DEFAULT_CONFIG.repo;
+  var branch = document.getElementById('cfgBranch').value.trim() || DEFAULT_CONFIG.branch;
+  var dataFile = document.getElementById('cfgDataFile').value.trim() || DEFAULT_CONFIG.dataFile;
+  var syncMode = document.getElementById('modeLocal').classList.contains('active') ? 'local' : 'cloud';
+  
+  state.config.token = token;
+  state.config.owner = owner;
+  state.config.repo = repo;
+  state.config.branch = branch;
+  state.config.dataFile = dataFile;
+  state.config.syncMode = syncMode;
+  
+  saveConfig();
+  closeSheet('settings');
+  
+  if (syncMode === 'local') {
+    setSyncStatus('local');
+    showToast('已切换到本地模式');
+  } else if (token) {
+    showToast('正在连接GitHub...');
+    pullFromGitHub().then(function() {
+      if (state.syncStatus === 'synced') {
+        showToast('已连接GitHub', 'success');
+      }
+    });
+  } else {
+    setSyncStatus('offline');
+    showToast('请填入Token', 'error');
+  }
+}
+
+// ============ Tools Menu ============
+
+function openToolsMenu() {
+  openSheet('tools');
+}
+
+// ============ Export / Import ============
+
+function exportJSON() {
+  var data = {
+    records: state.records,
+    locations: state.locations,
+    exportTime: now(),
+    version: 1
+  };
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'pickup-codes-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('已导出备份', 'success');
+}
+
+function importJSON(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (data.records && Array.isArray(data.records)) {
+        showConfirm('导入数据', '将导入 ' + data.records.length + ' 条记录，与现有数据合并。确定继续吗？', function() {
+          state.records = mergeRecords(state.records, data.records);
+          if (data.locations && Array.isArray(data.locations)) {
+            // Merge locations
+            for (var i = 0; i < data.locations.length; i++) {
+              if (state.locations.indexOf(data.locations[i]) < 0) {
+                state.locations.push(data.locations[i]);
+              }
+            }
+            saveLocations();
+          }
+          debouncedSave();
+          render();
+          showToast('导入成功', 'success');
+        });
+      } else {
+        showToast('文件格式不正确', 'error');
+      }
+    } catch(err) {
+      showToast('解析失败: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearCompleted() {
+  var completed = state.records.filter(function(r) {
+    return !r.deleted && (r.takenAt || r.errAt);
+  });
+  if (completed.length === 0) {
+    showToast('没有已完成的记录');
+    return;
+  }
+  showConfirm('清空已完成', '将清理 ' + completed.length + ' 条已取/已收/错误记录。确定继续吗？', function() {
+    for (var i = 0; i < completed.length; i++) {
+      updateRecord(completed[i].id, { deleted: true, deletedAt: now() });
+    }
+    debouncedSave();
+    render();
+    showToast('已清理 ' + completed.length + ' 条记录', 'success');
+  });
+}
+
+// ============ Tabs ============
+
+function switchTab(tab) {
+  state.currentTab = tab;
+  var items = document.querySelectorAll('.tab-item');
+  for (var i = 0; i < items.length; i++) {
+    items[i].classList.remove('active');
+  }
+  var activeItem = document.querySelector('.tab-item[data-tab="' + tab + '"]');
+  if (activeItem) activeItem.classList.add('active');
+  render();
+}
+
+// ============ Render ============
+
+function render() {
+  renderStats();
+  renderBadges();
+  renderList();
+}
+
+function renderStats() {
+  var active = getActiveRecords();
+  var pending = active.filter(function(r) {
+    return r.type === 'pickup' && !r.takenAt && !r.errAt;
+  }).length;
+  var send = active.filter(function(r) {
+    return r.type === 'send' && !r.errAt;
+  }).length;
+  document.getElementById('statPending').textContent = pending;
+  document.getElementById('statSend').textContent = send;
+}
+
+function renderBadges() {
+  var active = getActiveRecords();
+  document.getElementById('badgePending').textContent = active.filter(function(r) {
+    return r.type === 'pickup' && !r.takenAt && !r.errAt;
+  }).length;
+  document.getElementById('badgeTaken').textContent = active.filter(function(r) {
+    return r.type === 'pickup' && r.takenAt && !r.errAt;
+  }).length;
+  document.getElementById('badgeSend').textContent = active.filter(function(r) {
+    return r.type === 'send' && !r.errAt;
+  }).length;
+  document.getElementById('badgeError').textContent = active.filter(function(r) {
+    return r.errAt;
+  }).length;
+}
+
+function renderList() {
+  var container = document.getElementById('listContainer');
+  var records = getRecordsForTab(state.currentTab);
+  
+  if (records.length === 0) {
+    var emptyMsg = '';
+    switch(state.currentTab) {
+      case 'pending': emptyMsg = '暂无待取件记录'; break;
+      case 'taken': emptyMsg = '暂无已取记录'; break;
+      case 'send': emptyMsg = '暂无寄件码'; break;
+      case 'error': emptyMsg = '暂无错误记录'; break;
+    }
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">' + emptyMsg + '<br>点击右下角 + 添加</div></div>';
+    return;
+  }
+  
+  var grouped = groupByLocation(records);
+  container.innerHTML = '';
+  
+  for (var gi = 0; gi < grouped.order.length; gi++) {
+    var locName = grouped.order[gi];
+    var groupRecords = grouped.groups[locName];
+    container.appendChild(createLocationGroup(locName, groupRecords));
+  }
+}
+
+function createLocationGroup(locName, records) {
+  var group = document.createElement('div');
+  group.className = 'location-group';
+  if (state.collapsedGroups[locName]) {
+    group.classList.add('collapsed');
+  }
+  
+  // Header
+  var header = document.createElement('div');
+  header.className = 'group-header';
+  header.onclick = function() {
+    group.classList.toggle('collapsed');
+    state.collapsedGroups[locName] = group.classList.contains('collapsed');
+  };
+  
+  var toggle = document.createElement('div');
+  toggle.className = 'group-toggle';
+  toggle.textContent = '▼';
+  
+  var name = document.createElement('div');
+  name.className = 'group-name';
+  name.textContent = locName;
+  
+  var count = document.createElement('div');
+  count.className = 'group-count';
+  count.textContent = records.length;
+  
+  header.appendChild(toggle);
+  header.appendChild(name);
+  header.appendChild(count);
+  group.appendChild(header);
+  
+  // Body
+  var body = document.createElement('div');
+  body.className = 'group-body';
+  
+  for (var i = 0; i < records.length; i++) {
+    body.appendChild(createRecordCard(records[i]));
+  }
+  
+  // Set max-height for animation
+  if (!state.collapsedGroups[locName]) {
+    body.style.maxHeight = '9999px';
+  }
+  
+  group.appendChild(body);
+  return group;
+}
+
+function createRecordCard(record) {
+  var card = document.createElement('div');
+  card.className = 'record-card';
+  card.dataset.id = record.id;
+  
+  if (record.type === 'send') card.classList.add('is-send');
+  if (record.errAt) card.classList.add('is-error');
+  if (record.takenAt) card.classList.add('is-taken');
+  
+  // Status tag
+  var status = document.createElement('div');
+  status.className = 'card-status';
+  if (record.errAt) {
+    status.classList.add('st-error');
+    status.textContent = '错误';
+  } else if (record.type === 'send') {
+    status.classList.add('st-send');
+    status.textContent = record.takenAt ? '已收' : '寄件';
+  } else if (record.takenAt) {
+    status.classList.add('st-taken');
+    status.textContent = '已取';
+  } else {
+    status.classList.add('st-pending');
+    status.textContent = '待取';
+  }
+  card.appendChild(status);
+  
+  // Main content
+  var main = document.createElement('div');
+  main.className = 'card-main';
+  
+  var code = document.createElement('div');
+  code.className = 'card-code';
+  if (record.type === 'send') code.classList.add('is-send');
+  code.textContent = formatCode(record.code);
+  main.appendChild(code);
+  
+  // Sub info
+  var sub = document.createElement('div');
+  sub.className = 'card-sub';
+  var subParts = [];
+  if (record.recipient) {
+    var rec = document.createElement('span');
+    rec.className = 'sub-recipient';
+    rec.textContent = record.recipient;
+    sub.appendChild(rec);
+  }
+  if (record.note) {
+    if (record.recipient) {
+      var dot = document.createElement('span');
+      dot.className = 'sub-dot';
+      dot.textContent = '·';
+      sub.appendChild(dot);
+    }
+    var noteSpan = document.createElement('span');
+    noteSpan.className = 'sub-note';
+    noteSpan.textContent = record.note;
+    sub.appendChild(noteSpan);
+  }
+  if (!record.recipient && !record.note) {
+    var emptySub = document.createElement('span');
+    emptySub.className = 'sub-note';
+    emptySub.textContent = record.location || '';
+    sub.appendChild(emptySub);
+  }
+  main.appendChild(sub);
+  card.appendChild(main);
+  
+  // Actions
+  var actions = document.createElement('div');
+  actions.className = 'card-actions';
+  
+  var btn = document.createElement('button');
+  btn.className = 'card-btn';
+  if (record.type === 'send') {
+    if (record.takenAt) {
+      btn.classList.add('btn-received');
+      btn.textContent = '已收';
+    } else {
+      btn.classList.add('btn-receive');
+      btn.textContent = '已收';
+    }
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      toggleReceived(record.id);
+    };
+  } else {
+    if (record.takenAt) {
+      btn.classList.add('btn-taken');
+      btn.textContent = '已取';
+    } else if (record.errAt) {
+      btn.classList.add('btn-restore');
+      btn.textContent = '恢复';
+    } else {
+      btn.classList.add('btn-take');
+      btn.textContent = '已取';
+    }
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      if (record.errAt) {
+        markError(record.id);
+      } else {
+        toggleTaken(record.id);
+      }
+    };
+  }
+  actions.appendChild(btn);
+  card.appendChild(actions);
+  
+  // Click to edit
+  card.onclick = function(e) {
+    if (e.target.closest('.card-btn')) return;
+    openEditForm(record.id);
+  };
+  
+  // Long press
+  attachLongPress(card, record);
+  
+  return card;
+}
+
+// ============ Long Press ============
+
+function attachLongPress(element, record) {
+  var timer = null;
+  var isLongPress = false;
+  
+  function startPress(e) {
+    isLongPress = false;
+    // Use touch or mouse
+    timer = setTimeout(function() {
+      isLongPress = true;
+      openActionMenu(record.id);
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 600);
+  }
+  
+  function cancelPress() {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  }
+  
+  element.addEventListener('touchstart', startPress, { passive: true });
+  element.addEventListener('touchend', cancelPress);
+  element.addEventListener('touchmove', cancelPress);
+  element.addEventListener('touchcancel', cancelPress);
+  
+  element.addEventListener('mousedown', startPress);
+  element.addEventListener('mouseup', cancelPress);
+  element.addEventListener('mouseleave', cancelPress);
+  
+  // Prevent context menu on long press
+  element.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    openActionMenu(record.id);
+    return false;
+  });
+}
+
+function openActionMenu(id) {
+  var r = findRecord(id);
+  if (!r) return;
+  var body = document.getElementById('actionMenuBody');
+  body.innerHTML = '';
+  
+  // Show big code
+  var bigCodeBtn = document.createElement('button');
+  bigCodeBtn.className = 'action-menu-item';
+  bigCodeBtn.innerHTML = '<span class="ami-icon">🔍</span><span>大字显示取件码</span>';
+  bigCodeBtn.onclick = function() {
+    closeSheet('action');
+    showBigCode(id);
+  };
+  body.appendChild(bigCodeBtn);
+  
+  // Edit
+  var editBtn = document.createElement('button');
+  editBtn.className = 'action-menu-item';
+  editBtn.innerHTML = '<span class="ami-icon">✏️</span><span>编辑记录</span>';
+  editBtn.onclick = function() {
+    closeSheet('action');
+    openEditForm(id);
+  };
+  body.appendChild(editBtn);
+  
+  // Mark error / restore
+  var errBtn = document.createElement('button');
+  errBtn.className = 'action-menu-item';
+  if (r.errAt) {
+    errBtn.innerHTML = '<span class="ami-icon">✅</span><span>取消错误标记</span>';
+  } else {
+    errBtn.innerHTML = '<span class="ami-icon">⚠️</span><span>标记为错误</span>';
+  }
+  errBtn.onclick = function() {
+    closeSheet('action');
+    markError(id);
+  };
+  body.appendChild(errBtn);
+  
+  // Toggle status
+  var toggleBtn = document.createElement('button');
+  toggleBtn.className = 'action-menu-item';
+  if (r.type === 'send') {
+    if (r.takenAt) {
+      toggleBtn.innerHTML = '<span class="ami-icon">↩️</span><span>恢复未收</span>';
+    } else {
+      toggleBtn.innerHTML = '<span class="ami-icon">📦</span><span>标记已收</span>';
+    }
+    toggleBtn.onclick = function() {
+      closeSheet('action');
+      toggleReceived(id);
+    };
+  } else {
+    if (r.takenAt) {
+      toggleBtn.innerHTML = '<span class="ami-icon">↩️</span><span>恢复待取</span>';
+    } else {
+      toggleBtn.innerHTML = '<span class="ami-icon">📦</span><span>标记已取</span>';
+    }
+    toggleBtn.onclick = function() {
+      closeSheet('action');
+      toggleTaken(id);
+    };
+  }
+  body.appendChild(toggleBtn);
+  
+  // Delete
+  var delBtn = document.createElement('button');
+  delBtn.className = 'action-menu-item danger';
+  delBtn.innerHTML = '<span class="ami-icon">🗑</span><span>删除记录</span>';
+  delBtn.onclick = function() {
+    closeSheet('action');
+    deleteRecord(id);
+  };
+  body.appendChild(delBtn);
+  
+  openSheet('action');
+}
+
+// ============ Sheet Management ============
+
+function openSheet(name) {
+  var overlayId = 'overlay' + name.charAt(0).toUpperCase() + name.slice(1);
+  var sheetId = 'sheet' + name.charAt(0).toUpperCase() + name.slice(1);
+  var overlay = document.getElementById(overlayId);
+  var sheet = document.getElementById(sheetId);
+  if (!overlay || !sheet) return;
+  overlay.classList.add('show');
+  sheet.classList.add('show');
+}
+
+function closeSheet(name) {
+  var overlayId = 'overlay' + name.charAt(0).toUpperCase() + name.slice(1);
+  var sheetId = 'sheet' + name.charAt(0).toUpperCase() + name.slice(1);
+  var overlay = document.getElementById(overlayId);
+  var sheet = document.getElementById(sheetId);
+  if (!overlay || !sheet) return;
+  overlay.classList.remove('show');
+  sheet.classList.remove('show');
+}
+
+// ============ Confirm Dialog ============
+
+var confirmCallback = null;
+
+function showConfirm(title, msg, callback) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  confirmCallback = callback;
+  document.getElementById('overlayConfirm').classList.add('show');
+  document.getElementById('confirmDialog').classList.add('show');
+  
+  var okBtn = document.getElementById('confirmOkBtn');
+  okBtn.onclick = function() {
+    document.getElementById('overlayConfirm').classList.remove('show');
+    document.getElementById('confirmDialog').classList.remove('show');
+    if (confirmCallback) {
+      var cb = confirmCallback;
+      confirmCallback = null;
+      cb();
+    }
+  };
+  
+  // Reset button class
+  okBtn.className = 'btn btn-primary';
+  // If the confirm is for delete, make it danger
+  if (title.indexOf('删除') >= 0 || title.indexOf('清空') >= 0) {
+    okBtn.className = 'btn btn-danger';
+  }
+}
+
+function cancelConfirm() {
+  document.getElementById('overlayConfirm').classList.remove('show');
+  document.getElementById('confirmDialog').classList.remove('show');
+  confirmCallback = null;
+}
+
+// ============ Toast ============
+
+var toastTimer = null;
+
+function showToast(msg, type) {
+  var toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'toast';
+  if (type === 'error') toast.classList.add('toast-error');
+  if (type === 'success') toast.classList.add('toast-success');
+  
+  // Force reflow
+  void toast.offsetHeight;
+  
+  toast.classList.add('show');
+  
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() {
+    toast.classList.remove('show');
+  }, 2500);
+}
+
+// ============ Input Formatting ============
+
+document.addEventListener('DOMContentLoaded', function() {
+  var codeInput = document.getElementById('inputCode');
+  
+  codeInput.addEventListener('input', function(e) {
+    // For each line, format the digits
+    var lines = e.target.value.split('\n');
+    var formattedLines = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var digits = line.replace(/\D/g, '');
+      if (digits.length === 0) {
+        formattedLines.push(line);
+      } else if (digits.length <= 8) {
+        // Auto-add dash after 4 digits for pickup codes
+        if (digits.length > 4) {
+          formattedLines.push(digits.slice(0,4) + '-' + digits.slice(4));
+        } else {
+          formattedLines.push(digits);
+        }
+      } else {
+        // Long codes - format in groups of 4
+        var parts = [];
+        for (var j = 0; j < digits.length; j += 4) {
+          parts.push(digits.slice(j, j+4));
+        }
+        formattedLines.push(parts.join('-'));
+      }
+    }
+    
+    var newVal = formattedLines.join('\n');
+    if (newVal !== e.target.value) {
+      var start = e.target.selectionStart;
+      var end = e.target.selectionEnd;
+      e.target.value = newVal;
+      // Try to restore cursor position
+      try {
+        e.target.setSelectionRange(start, end);
+      } catch(err) {}
+    }
+  });
+  
+  // Prevent body scroll when sheet is open
+  var sheets = document.querySelectorAll('.bottom-sheet');
+  for (var i = 0; i < sheets.length; i++) {
+    sheets[i].addEventListener('touchmove', function(e) {
+      // Allow scrolling inside sheet body
+      if (e.target.closest('.sheet-body')) return;
+      e.preventDefault();
+    }, { passive: false });
+  }
+  
+  // Close sheets on Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeBigCode();
+      cancelConfirm();
+      closeSheet('form');
+      closeSheet('locMgmt');
+      closeSheet('action');
+      closeSheet('tools');
+      closeSheet('settings');
+    }
+  });
+  
+  // Init
+  init();
+});
+
+// ============ Init ============
+
+async function init() {
+  loadConfig();
+  loadLocations();
+  loadLocalRecords();
+  
+  // Set sync status
+  if (state.config.syncMode === 'local') {
+    setSyncStatus('local');
+  } else if (!hasCloudConfig()) {
+    setSyncStatus('offline');
+  }
+  
+  render();
+  
+  // If cloud mode and has token, pull
+  if (state.config.syncMode !== 'local' && hasCloudConfig()) {
+    await pullFromGitHub();
+    render();
+  } else if (state.config.syncMode !== 'local' && !hasCloudConfig()) {
+    // First time - open settings
+    setTimeout(function() {
+      openSettings();
+    }, 500);
+  }
+}
+
+</script>
+</body>
+</html>
