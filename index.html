@@ -839,61 +839,88 @@
     return { 'Authorization': 'Bearer ' + ghConfig.token, 'Accept': 'application/vnd.github+json' };
   }
   function ghApiBase() {
-    return `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}`;
+    return 'https://api.github.com/repos/' + ghConfig.owner + '/' + ghConfig.repo;
   }
 
   function setSyncStatus(s) {
-    const chip = $('syncChip'), txt = $('syncText');
+    var chip = $('syncChip'), txt = $('syncText');
     if (!ghConfig.token || ghConfig.mode === 'local') { chip.className = 'sync-chip local'; txt.textContent = '本地模式'; return; }
     if (s === 'ok') { chip.className = 'sync-chip ok'; txt.textContent = '已同步'; }
     else if (s === 'busy') { chip.className = 'sync-chip busy'; txt.textContent = '同步中…'; }
     else { chip.className = 'sync-chip off'; txt.textContent = '未连接'; }
   }
 
-  async function apiGet() {
-    var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
-    var res = await fetch(url, { headers: ghHeaders(), cache: 'no-store' });
-    if (res.status === 404) return { records: [] };
-    if (!res.ok) throw new Error('get fail: ' + res.status);
-    var data = await res.json();
-    // Decode base64 to UTF-8 string (handles Chinese correctly)
-    var raw = data.content ? data.content.replace(/\n/g, '') : '';
-    var content = '{}';
-    if (raw) {
-      try { content = decodeURIComponent(escape(atob(raw))); } catch(e) { content = '{}'; }
+  // Fetch with timeout (with AbortController fallback)
+  function fetchWithTimeout(url, options, ms) {
+    if (typeof AbortController !== 'undefined') {
+      var controller = new AbortController();
+      var signal = controller.signal;
+      var opts = Object.assign({}, options || {}, { signal: signal });
+      var timer = setTimeout(function() { controller.abort(); }, ms || 15000);
+      return fetch(url, opts).then(function(res) { clearTimeout(timer); return res; }, function(err) { clearTimeout(timer); throw err; });
+    } else {
+      // Fallback: no abort, just fetch
+      return fetch(url, options);
     }
-    var parsed = JSON.parse(content);
-    return { records: parsed.records || [], places: parsed.places || [], _sha: data.sha };
   }
-  async function apiPost(recs) {
-    // Encode UTF-8 string to base64 (compatible with all browsers)
-    var jsonStr = JSON.stringify({ records: recs, places });
-    // Use encodeURIComponent + unescape for maximum compatibility
-    var content;
+
+  // UTF-8 safe base64 encode
+  function utf8ToBase64(str) {
     try {
-      content = btoa(unescape(encodeURIComponent(jsonStr)));
+      return btoa(unescape(encodeURIComponent(str)));
     } catch(e) {
-      // Fallback: manual UTF-8 to base64
       var bytes = [];
-      for (var i = 0; i < jsonStr.length; i++) {
-        var c = jsonStr.charCodeAt(i);
+      for (var i = 0; i < str.length; i++) {
+        var c = str.charCodeAt(i);
         if (c < 128) bytes.push(c);
         else if (c < 2048) { bytes.push(192 + (c >> 6), 128 + (c & 63)); }
         else { bytes.push(224 + (c >> 12), 128 + ((c >> 6) & 63), 128 + (c & 63)); }
       }
-      content = btoa(String.fromCharCode.apply(null, bytes));
+      return btoa(String.fromCharCode.apply(null, bytes));
     }
+  }
+  // UTF-8 safe base64 decode
+  function base64ToUtf8(b64) {
+    try {
+      return decodeURIComponent(escape(atob(b64)));
+    } catch(e) {
+      try { return atob(b64); } catch(e2) { return '{}'; }
+    }
+  }
+
+  async function apiGet() {
+    var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
+    var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 15000);
+    if (res.status === 404) return { records: [], places: [] };
+    if (!res.ok) throw new Error('GET failed: ' + res.status);
+    var data = await res.json();
+    var raw = data.content ? data.content.replace(/\n/g, '') : '';
+    var content = raw ? base64ToUtf8(raw) : '{}';
+    var parsed = JSON.parse(content);
+    return { records: parsed.records || [], places: parsed.places || [] };
+  }
+  async function apiPost(recs) {
+    var jsonStr = JSON.stringify({ records: recs, places: places });
+    var content = utf8ToBase64(jsonStr);
+    // Get current file sha for update
     var sha = null;
     try {
-      var check = await fetch(ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch, { headers: ghHeaders(), cache: 'no-store' });
+      var checkUrl = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
+      var check = await fetchWithTimeout(checkUrl, { headers: ghHeaders(), cache: 'no-store' }, 10000);
       if (check.ok) { var d = await check.json(); sha = d.sha; }
     } catch (e) {}
-    var res = await fetch(ghApiBase() + '/contents/' + ghConfig.dataFile, {
+    var putUrl = ghApiBase() + '/contents/' + ghConfig.dataFile;
+    var body = JSON.stringify({ message: 'sync pickup codes', content: content, sha: sha, branch: ghConfig.branch });
+    var res = await fetchWithTimeout(putUrl, {
       method: 'PUT',
       headers: Object.assign(ghHeaders(), { 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ message: 'sync pickup codes', content: content, sha: sha, branch: ghConfig.branch })
-    });
-    if (!res.ok) throw new Error('post fail: ' + res.status);
+      body: body
+    }, 15000);
+    if (!res.ok) {
+      var errText = '';
+      try { var errData = await res.json(); errText = errData.message || ''; } catch(e2) {}
+      throw new Error('PUT failed: ' + res.status + (errText ? ' - ' + errText : ''));
+    }
   }
 
   // 记录级合并：同 id 取 updatedAt 新者；清理 7 天前的删除墓碑
@@ -933,7 +960,11 @@
       if (manual) toast('已是最新，云端同步完成 ☁');
     } catch (e) {
       setSyncStatus('off');
-      if (manual) toast('同步失败，将自动重试');
+      var errMsg = String(e.message || e).substring(0, 120);
+      // Show error in sync text so user can see what's wrong
+      var txt = $('syncText');
+      if (txt) txt.textContent = '错误: ' + errMsg.substring(0, 40);
+      if (manual) toast('同步失败: ' + errMsg);
       if (!syncRetryTimer) {
         syncFails++;
         syncRetryTimer = setTimeout(() => { syncRetryTimer = null; syncNow(false); }, 3000);
