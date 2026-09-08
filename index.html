@@ -851,33 +851,47 @@
   }
 
   async function apiGet() {
-    const url = `${ghApiBase()}/contents/${ghConfig.dataFile}?ref=${ghConfig.branch}`;
-    const res = await fetch(url, { headers: ghHeaders(), cache: 'no-store' });
+    var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
+    var res = await fetch(url, { headers: ghHeaders(), cache: 'no-store' });
     if (res.status === 404) return { records: [] };
     if (!res.ok) throw new Error('get fail: ' + res.status);
-    const data = await res.json();
+    var data = await res.json();
     // Decode base64 to UTF-8 string (handles Chinese correctly)
-    const raw = data.content ? data.content.replace(/\n/g, '') : '';
-    let content = '{}';
+    var raw = data.content ? data.content.replace(/\n/g, '') : '';
+    var content = '{}';
     if (raw) {
       try { content = decodeURIComponent(escape(atob(raw))); } catch(e) { content = '{}'; }
     }
-    const parsed = JSON.parse(content);
+    var parsed = JSON.parse(content);
     return { records: parsed.records || [], places: parsed.places || [], _sha: data.sha };
   }
   async function apiPost(recs) {
-    // Encode UTF-8 string to base64 (handles Chinese correctly)
-    const jsonStr = JSON.stringify({ records: recs, places });
-    const content = btoa(Array.from(new TextEncoder().encode(jsonStr), b => String.fromCharCode(b)).join(''));
-    let sha = null;
+    // Encode UTF-8 string to base64 (compatible with all browsers)
+    var jsonStr = JSON.stringify({ records: recs, places });
+    // Use encodeURIComponent + unescape for maximum compatibility
+    var content;
     try {
-      const check = await fetch(`${ghApiBase()}/contents/${ghConfig.dataFile}?ref=${ghConfig.branch}`, { headers: ghHeaders(), cache: 'no-store' });
-      if (check.ok) { const d = await check.json(); sha = d.sha; }
+      content = btoa(unescape(encodeURIComponent(jsonStr)));
+    } catch(e) {
+      // Fallback: manual UTF-8 to base64
+      var bytes = [];
+      for (var i = 0; i < jsonStr.length; i++) {
+        var c = jsonStr.charCodeAt(i);
+        if (c < 128) bytes.push(c);
+        else if (c < 2048) { bytes.push(192 + (c >> 6), 128 + (c & 63)); }
+        else { bytes.push(224 + (c >> 12), 128 + ((c >> 6) & 63), 128 + (c & 63)); }
+      }
+      content = btoa(String.fromCharCode.apply(null, bytes));
+    }
+    var sha = null;
+    try {
+      var check = await fetch(ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch, { headers: ghHeaders(), cache: 'no-store' });
+      if (check.ok) { var d = await check.json(); sha = d.sha; }
     } catch (e) {}
-    const res = await fetch(`${ghApiBase()}/contents/${ghConfig.dataFile}`, {
+    var res = await fetch(ghApiBase() + '/contents/' + ghConfig.dataFile, {
       method: 'PUT',
       headers: Object.assign(ghHeaders(), { 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ message: 'sync pickup codes', content, sha, branch: ghConfig.branch })
+      body: JSON.stringify({ message: 'sync pickup codes', content: content, sha: sha, branch: ghConfig.branch })
     });
     if (!res.ok) throw new Error('post fail: ' + res.status);
   }
