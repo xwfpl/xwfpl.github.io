@@ -850,12 +850,19 @@
     if (res.status === 404) return { records: [] };
     if (!res.ok) throw new Error('get fail: ' + res.status);
     const data = await res.json();
-    const content = data.content ? atob(data.content.replace(/\n/g, '')) : '{}';
+    // Decode base64 to UTF-8 string (handles Chinese correctly)
+    const raw = data.content ? data.content.replace(/\n/g, '') : '';
+    let content = '{}';
+    if (raw) {
+      try { content = decodeURIComponent(escape(atob(raw))); } catch(e) { content = '{}'; }
+    }
     const parsed = JSON.parse(content);
     return { records: parsed.records || [], places: parsed.places || [], _sha: data.sha };
   }
   async function apiPost(recs) {
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify({ records: recs, places }))));
+    // Encode UTF-8 string to base64 (handles Chinese correctly)
+    const jsonStr = JSON.stringify({ records: recs, places });
+    const content = btoa(Array.from(new TextEncoder().encode(jsonStr), b => String.fromCharCode(b)).join(''));
     let sha = null;
     try {
       const check = await fetch(`${ghApiBase()}/contents/${ghConfig.dataFile}?ref=${ghConfig.branch}`, { headers: ghHeaders(), cache: 'no-store' });
