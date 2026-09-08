@@ -734,8 +734,9 @@
 
   async function pushPlaces() {
     savePlacesLocal(); renderLocTags(); syncLocTags();
-    if (!ghConfig.token) return;
-    // Places are saved as part of the main data file
+    if (!ghConfig.token || ghConfig.mode === 'local') return;
+    // Trigger sync to upload places to cloud
+    scheduleSync();
   }
   async function syncPlaces() {
     if (!ghConfig.token) return;
@@ -942,17 +943,28 @@
     syncing = true; setSyncStatus('busy');
     try {
       var cloud = await apiGet();
-      if (Array.isArray(cloud.places) && JSON.stringify(cloud.places) !== JSON.stringify(places)) {
-        places = cloud.places;
-        savePlacesLocal(); renderLocTags(); syncLocTags();
+      // Merge places: local takes priority, but add any new cloud places
+      if (Array.isArray(cloud.places)) {
+        var mergedPlaces = places.slice();
+        var hasNew = false;
+        for (var pi = 0; pi < cloud.places.length; pi++) {
+          if (mergedPlaces.indexOf(cloud.places[pi]) === -1) {
+            mergedPlaces.push(cloud.places[pi]);
+            hasNew = true;
+          }
+        }
+        if (hasNew) {
+          places = mergedPlaces;
+          savePlacesLocal(); renderLocTags(); syncLocTags();
+        }
       }
       var merged = mergeRecords(records, cloud.records || []);
       var sig = function(arr) { return JSON.stringify(arr.slice().sort(function(a, b) { return a.id < b.id ? -1 : 1; })); };
       if (sig(merged) !== sig(records)) {
         records = merged; saveLocal(); render();
       }
-      // Only upload if data actually changed (skip PUT when local matches cloud)
-      var needUpload = sig(merged) !== sig(cloud.records || []);
+      // Only upload if data actually changed (records or places)
+      var needUpload = sig(merged) !== sig(cloud.records || []) || JSON.stringify(places) !== JSON.stringify(cloud.places || []);
       if (needUpload) {
         await apiPost(merged, cloud._sha);
       }
