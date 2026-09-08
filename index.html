@@ -676,7 +676,7 @@
     const el = $('inCode');
     if (!el) return;
     if (!all) {                                       // 只整理光标所在行，光标跟着走
-      const pos = el.selectionStart ?? el.value.length;
+      var pos = (el.selectionStart != null) ? el.selectionStart : el.value.length;
       const before = el.value.slice(0, pos);
       const idx = before.split('\n').length - 1;
       const lines = el.value.split('\n');
@@ -692,8 +692,8 @@
       while (np < grouped.length && !/\d/.test(grouped[np])) np++;
       lines[idx] = grouped;
       el.value = lines.join('\n');
-      const newPos = lines.slice(0, idx).join('\n').length + (idx ? 1 : 0) + np;
-      el.setSelectionRange(newPos, newPos);
+      var newPos = lines.slice(0, idx).join('\n').length + (idx ? 1 : 0) + np;
+      try { el.setSelectionRange(newPos, newPos); } catch(e2) {}
     } else {                                          // 失焦/回车：整理所有行，不留悬空横杠
       const lines = el.value.split('\n');
       let changed = false;
