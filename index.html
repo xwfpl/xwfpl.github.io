@@ -941,18 +941,21 @@
     if (!ghConfig.token || ghConfig.mode === 'local' || syncing) return;
     syncing = true; setSyncStatus('busy');
     try {
-      const cloud = await apiGet();
-      // 同步地点
+      var cloud = await apiGet();
       if (Array.isArray(cloud.places) && JSON.stringify(cloud.places) !== JSON.stringify(places)) {
         places = cloud.places;
         savePlacesLocal(); renderLocTags(); syncLocTags();
       }
-      const merged = mergeRecords(records, cloud.records || []);
-      const sig = arr => JSON.stringify(arr.slice().sort((a, b) => (a.id < b.id ? -1 : 1)));
+      var merged = mergeRecords(records, cloud.records || []);
+      var sig = function(arr) { return JSON.stringify(arr.slice().sort(function(a, b) { return a.id < b.id ? -1 : 1; })); };
       if (sig(merged) !== sig(records)) {
         records = merged; saveLocal(); render();
       }
-      await apiPost(merged, cloud._sha);
+      // Only upload if data actually changed (skip PUT when local matches cloud)
+      var needUpload = sig(merged) !== sig(cloud.records || []);
+      if (needUpload) {
+        await apiPost(merged, cloud._sha);
+      }
       setSyncStatus('ok');
       syncFails = 0; lastSyncOK = Date.now();
       if (syncRetryTimer) { clearTimeout(syncRetryTimer); syncRetryTimer = null; }
@@ -961,13 +964,12 @@
     } catch (e) {
       setSyncStatus('off');
       var errMsg = String(e.message || e).substring(0, 120);
-      // Show error in sync text so user can see what's wrong
       var txt = $('syncText');
       if (txt) txt.textContent = '错误: ' + errMsg.substring(0, 40);
       if (manual) toast('同步失败: ' + errMsg);
       if (!syncRetryTimer) {
         syncFails++;
-        syncRetryTimer = setTimeout(() => { syncRetryTimer = null; syncNow(false); }, 3000);
+        syncRetryTimer = setTimeout(function() { syncRetryTimer = null; syncNow(false); }, 5000);
       }
       startSyncWatchdog();
     } finally { syncing = false; }
@@ -976,7 +978,7 @@
   function scheduleSync() {
     if (!ghConfig.token || ghConfig.mode === 'local') return;
     clearTimeout(syncTimer);
-    syncTimer = setTimeout(() => syncNow(false), 1200);
+    syncTimer = setTimeout(function() { syncNow(false); }, 800);  // reduced from 1200 to 800
   }
 
   /* 断连自愈看门狗 */
