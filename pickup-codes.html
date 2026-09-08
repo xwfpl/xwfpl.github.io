@@ -2,2334 +2,1595 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#ff6a00">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>取件码小本本</title>
 <style>
-:root {
-  --primary: #ff6a00;
-  --primary-dark: #e05500;
-  --primary-light: #fff1e6;
-  --green: #10a54a;
-  --green-light: #e8f8ee;
-  --text: #23272f;
-  --text-2: #6b7280;
-  --text-3: #9ca3af;
-  --bg: #f4f5f7;
-  --card: #ffffff;
-  --border: #eceef2;
-  --danger: #e5484d;
-  --radius: 14px;
-  --shadow: 0 2px 10px rgba(30, 35, 45, .06);
-  /* 寄件码紫色系 */
-  --purple: #8b5cf6;
-  --purple-dark: #6d28d9;
-  --purple-light: #f1ebff;
-  --purple-bg: #f8f5ff;
-}
+  :root {
+    --primary: #ff6a00;
+    --primary-dark: #e05500;
+    --primary-light: #fff1e6;
+    --green: #10a54a;
+    --green-light: #e8f8ee;
+    --text: #23272f;
+    --text-2: #6b7280;
+    --text-3: #9ca3af;
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --border: #eceef2;
+    --danger: #e5484d;
+    --radius: 14px;
+    --shadow: 0 2px 10px rgba(30, 35, 45, .06);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-bottom: 96px;
+  }
+  button { font-family: inherit; border: none; background: none; cursor: pointer; color: inherit; }
+  input, select, textarea { font-family: inherit; font-size: 15px; }
 
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* ===== 顶部 ===== */
+  .header {
+    background: linear-gradient(135deg, #ff7a1a, #ff5c00);
+    color: #fff;
+    padding: 14px 16px 12px;
+    position: sticky; top: 0; z-index: 50;
+    box-shadow: 0 2px 10px rgba(255, 92, 0, .22);
+  }
+  .header .row1 {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .header .logo { font-size: 22px; }
+  .header h1 { font-size: 17px; font-weight: 800; letter-spacing: 1px; flex: 1; }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; background: rgba(255,255,255,.16); color: #fff;
+    transition: background .15s;
+  }
+  .icon-btn:active { background: rgba(255,255,255,.3); }
+  .sync-chip {
+    display: flex; align-items: center; gap: 5px; flex: none;
+    background: rgba(255,255,255,.18); border-radius: 999px;
+    padding: 5px 10px; font-size: 11px; color: #fff; font-weight: 600;
+  }
+  .sync-chip:active { background: rgba(255,255,255,.3); }
+  .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; flex: none; }
+  .sync-chip.busy .s-dot { background: #ffe9b8; animation: pulse 1s infinite; }
+  .sync-chip.off .s-dot { background: #fca5a5; }
+  .sync-chip.local .s-dot { background: #e5e7eb; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .stats {
+    margin-top: 10px; display: flex; gap: 8px;
+  }
+  .stat-chip {
+    flex: 1; background: rgba(255,255,255,.15);
+    border-radius: 10px; padding: 6px 10px;
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .stat-chip .k { font-size: 11px; opacity: .9; }
+  .stat-chip .v { font-size: 17px; font-weight: 800; }
+  .stat-chip.sendc .v { color: #eadcff; }
 
-html, body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 15px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
+  /* ===== 寄件码（紫色系） ===== */
+  .card.send .code-zone { background: linear-gradient(135deg, #faf7ff, #fff); }
+  .card.send.taken .code-zone { background: #f3f0fd; }
+  .status-dot.send { background: #f1ebff; color: #6d28d9; }
+  .status-dot.sendok { background: #e8e2fb; color: #5b21b6; }
+  .take-btn.send-btn { background: #8b5cf6; box-shadow: 0 3px 10px rgba(139, 92, 246, .3); }
+  .g-cnt.send-cnt { color: #6d28d9; background: #f1ebff; }
+  .group-head.send-head {
+    background: linear-gradient(135deg, #fff, #f8f5ff);
+    border-color: #e4d9fb;
+  }
 
-body { min-height: 100vh; padding-bottom: 80px; }
+  /* ===== 表单类型切换 ===== */
+  .type-switch { display: flex; gap: 6px; margin-bottom: 10px; }
+  .type-btn {
+    flex: 1; padding: 8px 0; border-radius: 11px;
+    background: #f2f3f5; color: var(--text-2);
+    font-size: 14px; font-weight: 700;
+    border: 1.5px solid var(--border);
+    transition: all .15s;
+  }
+  .type-btn.active {
+    background: var(--primary-light); color: var(--primary-dark); border-color: var(--primary);
+  }
+  .type-btn.active[data-type="send"] {
+    background: #f3efff; color: #6d28d9; border-color: #8b5cf6;
+  }
 
-button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
-input, textarea { font-family: inherit; }
+  /* ===== Tab ===== */
+  .tabs {
+    display: flex; gap: 6px; padding: 8px 12px 6px;
+    position: sticky; top: 96px; z-index: 40;
+    background: linear-gradient(var(--bg) 82%, transparent);
+  }
+  .tab {
+    flex: 1; padding: 8px 0; border-radius: 999px;
+    background: var(--card); color: var(--text-2);
+    font-size: 16px; font-weight: 700;
+    border: 1px solid var(--border);
+    transition: all .15s;
+    text-align: center;
+  }
+  .tab.active {
+    background: var(--primary); color: #fff; border-color: var(--primary);
+    box-shadow: 0 2px 6px rgba(255, 92, 0, .28);
+  }
+  .tab .cnt { opacity: .85; font-size: 13px; margin-left: 2px; }
 
-/* ============ Header ============ */
-.app-header {
-  background: linear-gradient(135deg, #ff6a00 0%, #ff8533 100%);
-  padding: 16px 16px 0;
-  color: #fff;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: 0 2px 12px rgba(255, 106, 0, .25);
-}
+  /* ===== 列表 ===== */
+  .list { padding: 2px 14px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    overflow: hidden;
+    animation: fadeIn .25s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .card.taken { opacity: .75; }
+  .card .code-zone {
+    padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, #fff8f2, #fff);
+  }
+  .card.taken .code-zone { background: var(--green-light); }
+  .card.err .code-zone { background: linear-gradient(135deg, #fff4f4, #fff); border: 1px solid #ffd9db; }
+  .code-main { flex: 1; min-width: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .code-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 6px; min-width: 0; flex: 1; }
+  .status-dot {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 14px; padding: 4px 12px; border-radius: 999px;
+    vertical-align: middle; font-weight: 700; flex: none;
+  }
+  .status-dot.pending { background: #ffefe2; color: var(--primary-dark); }
+  .status-dot.ok { background: #d3f2e0; color: #0b7a38; }
+  .status-dot.err { background: #ffe1e2; color: #c4282d; }
+  .code-value.err-code { color: #c4282d; }
+  .code-value.err-code::after { content: ' ⚠'; font-size: .55em; vertical-align: middle; letter-spacing: 0; }
+  .code-value {
+    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    font-size: 21px; font-weight: 800; letter-spacing: .8px;
+    color: var(--text);
+    word-break: break-all; line-height: 1.2;
+  }
+  .code-recipient {
+    display: inline; font-size: 12px; font-weight: 600;
+    color: var(--text-3); letter-spacing: 0;
+  }
+  .card.taken .code-value { color: var(--green); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+  .take-btn {
+    flex: none; padding: 9px 14px; border-radius: 10px;
+    background: var(--green); color: #fff;
+    font-size: 13px; font-weight: 700; letter-spacing: .3px;
+    box-shadow: 0 2px 6px rgba(16, 165, 74, .24);
+    transition: transform .1s;
+    align-self: center;
+  }
+  .take-btn:active { transform: scale(.94); }
+  .take-btn.is-taken { background: #eef0f3; color: var(--text-2); box-shadow: none; }
+  .err-btn {
+    flex: none; align-self: center;
+    min-width: 40px; padding: 7px 9px;
+    border-radius: 10px;
+    background: #fff; color: var(--danger);
+    font-size: 12.5px; font-weight: 700; letter-spacing: .5px;
+    border: 1.5px solid #ffd0d2;
+    transition: all .12s; line-height: 1;
+  }
+  .err-btn:hover, .err-btn:active { background: #fff1f1; border-color: var(--danger); }
+  .card .meta { padding: 6px 14px 7px; border-top: 1px dashed var(--border); cursor: pointer; }
+  .meta-row { display: flex; gap: 6px; font-size: 11.5px; color: var(--text-2); margin-top: 2px; }
+  .meta-row .mk { flex: none; color: var(--text-3); }
+  .meta-row .mv { flex: 1; word-break: break-all; }
+  .tag-company {
+    display: inline-block; font-size: 10.5px; font-weight: 700;
+    color: var(--primary-dark); background: var(--primary-light);
+    padding: 0 6px; border-radius: 5px; margin-right: 4px;
+  }
 
-.header-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-}
+  /* ===== 地点分组 ===== */
+  .group { display: flex; flex-direction: column; gap: 8px; }
+  .group-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: linear-gradient(135deg, #fff, #fff6ee);
+    border: 1px solid #ffe0c2; border-radius: 12px;
+    padding: 9px 12px;
+    box-shadow: var(--shadow);
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+    transition: background .15s;
+  }
+  .group-head:active { background: #fff3e6; }
+  .group-head .g-left { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .g-arrow { color: var(--primary); font-size: 12px; flex: none; width: 14px; }
+  .g-icon { font-size: 16px; flex: none; }
+  .g-name {
+    font-size: 15px; font-weight: 800; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .g-cnt {
+    flex: none; font-size: 12px; font-weight: 700;
+    color: var(--primary-dark); background: var(--primary-light);
+    padding: 2px 9px; border-radius: 999px;
+  }
+  .group-cards { display: flex; flex-direction: column; gap: 6px; }
 
-.header-logo {
-  font-size: 26px;
-  line-height: 1;
-}
+  /* ===== 空状态 ===== */
+  .empty {
+    text-align: center; padding: 56px 20px; color: var(--text-3);
+  }
+  .empty .e-icon { font-size: 52px; margin-bottom: 12px; }
+  .empty p { font-size: 14px; }
+  .empty .hint { font-size: 12.5px; margin-top: 6px; color: #b3b9c2; }
 
-.header-title {
-  font-size: 19px;
-  font-weight: 700;
-  flex: 1;
-  letter-spacing: .5px;
-}
+  /* ===== 悬浮添加按钮 ===== */
+  .fab {
+    position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom));
+    width: 58px; height: 58px; border-radius: 50%;
+    background: linear-gradient(135deg, #ff7a1a, #ff5c00);
+    color: #fff; font-size: 30px; font-weight: 300;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 20px rgba(255, 92, 0, .4);
+    z-index: 60; transition: transform .12s;
+  }
+  .fab:active { transform: scale(.9); }
 
-.sync-capsule {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: rgba(255,255,255,.22);
-  padding: 5px 11px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  transition: background .2s;
-  white-space: nowrap;
-}
-.sync-capsule:active { background: rgba(255,255,255,.35); }
-.sync-capsule .dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #4ade80;
-  box-shadow: 0 0 6px rgba(74,222,128,.8);
-}
-.sync-capsule.syncing .dot { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,.8); animation: pulse 1s infinite; }
-.sync-capsule.offline .dot { background: #f87171; box-shadow: none; }
-.sync-capsule.local .dot { background: #d1d5db; box-shadow: none; }
+  /* ===== 模态框 ===== */
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(20, 24, 32, .5);
+    z-index: 100; display: none;
+    align-items: flex-end; justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .modal-mask.show { display: flex; animation: maskIn .2s; }
+  @keyframes maskIn { from { opacity: 0; } }
+  .modal {
+    background: #fff; width: 100%; max-width: 520px;
+    border-radius: 20px 20px 0 0;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    animation: slideUp .25s ease;
+    max-height: 88vh; overflow-y: auto;
+  }
+  /* 添加/编辑取件码弹窗：居中偏上，避免被键盘遮挡，本身不再滚动 */
+  #formMask.modal-mask {
+    align-items: flex-start;
+    padding: 5vh 0;
+    overflow-y: auto;
+  }
+  #formMask .modal.form-modal {
+    border-radius: 20px;
+    max-height: none;
+    overflow-y: visible;
+    align-self: flex-start;
+    transition: margin-top .2s;
+  }
+  @keyframes slideUp { from { transform: translateY(40px); opacity: .6; } }
+  .modal .m-head { display: flex; align-items: center; margin-bottom: 10px; }
+  .modal .m-head h3 { font-size: 17px; font-weight: 800; flex: 1; }
+  .m-close { font-size: 20px; color: var(--text-3); padding: 4px 8px; }
+  .field { margin-bottom: 9px; }
+  .field label { display: block; font-size: 12.5px; color: var(--text-2); font-weight: 600; margin-bottom: 4px; }
+  .field label .req { color: var(--danger); margin-left: 2px; }
+  .field input, .field select, .field textarea {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 11px;
+    padding: 8px 11px; outline: none; background: #fbfcfd;
+    transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); background: #fff; }
+  .field textarea { resize: none; height: 52px; }
+  .field .err { color: var(--danger); font-size: 12px; margin-top: 4px; display: none; }
+  .field.invalid input { border-color: var(--danger); }
+  .field.invalid .err { display: block; }
+  .code-hint { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--text-3); line-height: 1.4; }
+  .code-hint b { color: var(--primary-dark); font-weight: 800; }
+  .batch-badge { display: none; flex-shrink: 0; background: #e8f3ff; color: var(--primary-dark);
+    font-weight: 800; font-size: 11px; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+  /* 多行取件码输入框：回车换行、可滚到多条，整体略高以提示可多行 */
+  #inCode { resize: none; height: 60px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+  #inCode::-webkit-scrollbar { width: 4px; }
+  #inCode::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+  .quick-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .quick-tag {
+    font-size: 12px; padding: 5px 11px; border-radius: 999px;
+    background: #f2f3f5; color: var(--text-2); border: 1px solid var(--border);
+    font-weight: 600;
+    transition: all .12s;
+  }
+  .quick-tag:active { background: var(--primary-light); color: var(--primary-dark); border-color: #ffd4b3; }
+  .quick-tag.active {
+    background: var(--primary); color: #fff; border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(255, 92, 0, .25);
+  }
+  .quick-tag.active::before { content: '✓ '; font-size: 11px; }
+  .btn-submit {
+    width: 100%; padding: 11px 0; border-radius: 13px;
+    background: linear-gradient(135deg, #ff7a1a, #ff5c00);
+    color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 2px;
+    box-shadow: 0 4px 14px rgba(255, 92, 0, .3);
+    margin-top: 4px;
+  }
+  .btn-submit:active { transform: scale(.98); }
 
-@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+  /* ===== 地点管理 ===== */
+  .loc-label { display: flex; align-items: center; justify-content: space-between; }
+  .loc-manage {
+    font-size: 12px; font-weight: 600; color: var(--primary-dark);
+    background: var(--primary-light); border-radius: 7px; padding: 3px 9px;
+  }
+  .loc-manage:active { opacity: .7; }
+  .places-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; max-height: 44vh; overflow-y: auto; }
+  .place-row {
+    display: flex; align-items: center; gap: 8px;
+    background: #fbfcfd; border: 1.5px solid var(--border);
+    border-radius: 11px; padding: 8px 10px;
+  }
+  .place-row .p-name { flex: 1; font-size: 14px; font-weight: 600; word-break: break-all; }
+  .place-row .p-ops { display: flex; gap: 5px; flex: none; }
+  .p-edit, .p-del {
+    width: 30px; height: 30px; border-radius: 8px; font-size: 14px;
+    background: #f2f3f5; color: var(--text-2); display: flex; align-items: center; justify-content: center;
+  }
+  .p-del { color: var(--danger); }
+  .p-edit:active, .p-del:active { background: #e8e9ec; }
+  .place-row input {
+    flex: 1; border: 1.5px solid var(--primary); border-radius: 9px;
+    padding: 7px 10px; outline: none; font-size: 14px; background: #fff;
+  }
+  .p-save {
+    flex: none; width: 34px; height: 34px; border-radius: 9px;
+    background: var(--green); color: #fff; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .p-save:active { transform: scale(.92); }
+  .place-add { display: flex; gap: 8px; }
+  .place-add input {
+    flex: 1; border: 1.5px solid var(--border); border-radius: 11px;
+    padding: 10px 12px; outline: none; background: #fbfcfd; font-size: 14px;
+  }
+  .place-add input:focus { border-color: var(--primary); background: #fff; }
+  .place-add button {
+    flex: none; padding: 0 18px; border-radius: 11px;
+    background: var(--primary); color: #fff; font-weight: 700; font-size: 14px;
+  }
+  .place-add button:active { opacity: .85; }
+  .p-empty { text-align: center; color: var(--text-3); font-size: 13px; padding: 14px 0; }
+  .p-tip { font-size: 12px; color: var(--text-3); margin-top: 12px; text-align: center; }
 
-.header-tools-btn {
-  background: rgba(255,255,255,.2);
-  width: 34px; height: 34px;
-  border-radius: 10px;
-  font-size: 17px;
-  display: flex; align-items: center; justify-content: center;
-  transition: background .2s;
-}
-.header-tools-btn:active { background: rgba(255,255,255,.35); }
+  /* ===== 大字取件 ===== */
+  .bigcode-mask {
+    position: fixed; inset: 0; background: #16181d; z-index: 200;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    color: #fff; padding: 24px;
+  }
+  .bigcode-mask.show { display: flex; animation: maskIn .2s; }
+  .bigcode-mask .b-close {
+    position: absolute; top: calc(16px + env(safe-area-inset-top)); right: 18px;
+    font-size: 26px; color: rgba(255,255,255,.6); padding: 8px;
+  }
+  .bigcode-mask .b-company { font-size: 16px; color: #ffb37a; letter-spacing: 2px; margin-bottom: 6px; }
+  .bigcode-mask .b-code {
+    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    font-size: clamp(48px, 18vw, 110px); font-weight: 800; letter-spacing: 6px;
+    text-align: center; word-break: break-all; line-height: 1.2;
+    text-shadow: 0 0 40px rgba(255, 140, 50, .35);
+  }
+  .bigcode-mask .b-loc { font-size: 14px; color: rgba(255,255,255,.55); margin-top: 16px; }
+  .bigcode-mask .b-tip { font-size: 12px; color: rgba(255,255,255,.35); margin-top: 30px; }
 
-/* ============ Stats ============ */
-.stats-row {
-  display: flex;
-  gap: 10px;
-  padding-bottom: 14px;
-}
+  /* ===== 确认弹窗 ===== */
+  .confirm-mask {
+    position: fixed; inset: 0; background: rgba(20,24,32,.5); z-index: 300;
+    display: none; align-items: center; justify-content: center; padding: 32px;
+  }
+  .confirm-mask.show { display: flex; animation: maskIn .15s; }
+  .confirm-box {
+    background: #fff; border-radius: 16px; padding: 22px 20px 16px;
+    width: 100%; max-width: 320px; text-align: center;
+  }
+  .confirm-box p { font-size: 15px; margin-bottom: 18px; }
+  .confirm-box .c-ops { display: flex; gap: 10px; }
+  .confirm-box button {
+    flex: 1; padding: 10px 0; border-radius: 11px; font-size: 14.5px; font-weight: 700;
+  }
+  .confirm-box .c-cancel { background: #f2f3f5; color: var(--text-2); }
+  .confirm-box .c-ok { background: var(--danger); color: #fff; }
+  .confirm-box .c-ok.green { background: var(--green); }
 
-.stat-card {
-  flex: 1;
-  background: rgba(255,255,255,.18);
-  border-radius: 12px;
-  padding: 10px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+  /* ===== 长按操作菜单（底部弹层：标记错误 / 删除）===== */
+  .act-mask {
+    position: fixed; inset: 0; background: rgba(20,24,32,.5); z-index: 310;
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  .act-mask.show { display: flex; animation: maskIn .15s; }
+  .act-sheet {
+    background: #fff; width: 100%; max-width: 520px; margin: 0 auto;
+    border-radius: 18px 18px 0 0; padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+    animation: sheetUp .18s ease-out;
+  }
+  @keyframes sheetUp { from { transform: translateY(40px); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
+  .act-title {
+    text-align: center; font-size: 12px; color: var(--text-3); padding: 2px 0 10px;
+    word-break: break-all; line-height: 1.5;
+  }
+  .act-title b { color: var(--text-2); font-size: 13px; }
+  .act-item {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 14px 0; margin-top: 8px; border-radius: 12px;
+    font-size: 15px; font-weight: 800; background: #f5f6f8; color: var(--text-1);
+    transition: background .12s; border: none;
+  }
+  .act-item:active { background: #eceef1; }
+  .act-item.err { color: var(--danger); }
+  .act-item.del { color: var(--danger); }
+  .act-cancel {
+    display: block; width: 100%; margin-top: 8px; padding: 13px 0; border-radius: 12px;
+    font-size: 15px; font-weight: 700; background: #f5f6f8; color: var(--text-2); border: none;
+  }
 
-.stat-icon { font-size: 22px; }
-.stat-info { display: flex; flex-direction: column; }
-.stat-num { font-size: 22px; font-weight: 800; line-height: 1.1; }
-.stat-label { font-size: 11px; opacity: .85; }
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%) translateY(20px);
+    background: rgba(28, 32, 40, .92); color: #fff;
+    padding: 10px 20px; border-radius: 999px; font-size: 14px;
+    z-index: 400; opacity: 0; pointer-events: none;
+    transition: all .25s; max-width: 80vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ============ Tabs ============ */
-.tab-bar {
-  display: flex;
-  background: var(--card);
-  padding: 0 6px;
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 90;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.tab-bar::-webkit-scrollbar { display: none; }
+  /* ===== 工具面板 ===== */
+  .tool-panel { padding: 6px 16px 10px; }
+  .tool-row { display: flex; gap: 10px; }
+  .tool-btn {
+    flex: 1; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 11px 6px; font-size: 13px; font-weight: 600;
+    color: var(--text-2); box-shadow: var(--shadow);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .tool-btn .t-icon { font-size: 19px; }
+  .tool-btn:active { background: #f0f1f3; }
 
-.tab-item {
-  flex: 1;
-  min-width: 70px;
-  padding: 12px 6px;
-  text-align: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-2);
-  border-bottom: 3px solid transparent;
-  transition: all .2s;
-  position: relative;
-  white-space: nowrap;
-}
-.tab-item.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
-}
-.tab-item .tab-badge {
-  display: inline-block;
-  background: var(--primary-light);
-  color: var(--primary);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 10px;
-  margin-left: 3px;
-  vertical-align: top;
-}
-.tab-item.active .tab-badge { background: var(--primary); color: #fff; }
-
-/* ============ List ============ */
-.list-container { padding: 12px 12px 20px; }
-
-.location-group {
-  background: var(--card);
-  border-radius: var(--radius);
-  margin-bottom: 12px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-}
-
-.group-header {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  cursor: pointer;
-  user-select: none;
-  transition: background .15s;
-}
-.group-header:active { background: var(--bg); }
-
-.group-toggle {
-  width: 20px; height: 20px;
-  display: flex; align-items: center; justify-content: center;
-  transition: transform .25s;
-  color: var(--text-3);
-  font-size: 12px;
-  margin-right: 4px;
-}
-.location-group.collapsed .group-toggle { transform: rotate(-90deg); }
-
-.group-name {
-  font-size: 16px;
-  font-weight: 700;
-  flex: 1;
-}
-
-.group-count {
-  background: var(--bg);
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 2px 10px;
-  border-radius: 12px;
-  min-width: 24px;
-  text-align: center;
-}
-
-.group-body {
-  transition: max-height .3s ease, opacity .2s;
-  overflow: hidden;
-}
-.location-group.collapsed .group-body {
-  max-height: 0 !important;
-  opacity: 0;
-}
-
-/* ============ Record Card ============ */
-.record-card {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-  gap: 12px;
-  position: relative;
-  transition: background .15s;
-}
-.record-card:active { background: var(--bg); }
-.record-card.is-send { background: var(--purple-bg); }
-.record-card.is-send:active { background: var(--purple-light); }
-.record-card.is-error { opacity: .65; }
-.record-card.is-taken { opacity: .7; }
-
-.card-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 0;
-  border-radius: 6px;
-  flex-shrink: 0;
-  text-align: center;
-  line-height: 1.3;
-}
-.card-status.st-pending { background: var(--primary-light); color: var(--primary); }
-.card-status.st-taken { background: var(--green-light); color: var(--green); }
-.card-status.st-send { background: var(--purple-light); color: var(--purple-dark); }
-.card-status.st-error { background: #fee2e2; color: var(--danger); }
-
-.card-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.card-code {
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: var(--text);
-  line-height: 1.2;
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
-}
-.card-code.is-send { color: var(--purple-dark); }
-
-.card-sub {
-  font-size: 12px;
-  color: var(--text-2);
-  margin-top: 2px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.card-sub .sub-recipient { font-weight: 600; color: var(--text); }
-.card-sub .sub-note { color: var(--text-3); }
-.card-sub .sub-dot { color: var(--text-3); }
-
-.card-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.card-btn {
-  padding: 7px 14px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 700;
-  transition: all .15s;
-  text-align: center;
-}
-.card-btn:active { transform: scale(.93); }
-.card-btn.btn-take {
-  background: var(--green);
-  color: #fff;
-}
-.card-btn.btn-receive {
-  background: var(--purple);
-  color: #fff;
-}
-.card-btn.btn-taken {
-  background: var(--green-light);
-  color: var(--green);
-}
-.card-btn.btn-received {
-  background: var(--purple-light);
-  color: var(--purple-dark);
-}
-.card-btn.btn-restore {
-  background: var(--primary-light);
-  color: var(--primary);
-}
-
-/* ============ Empty State ============ */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text-3);
-}
-.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: .4; }
-.empty-state .empty-text { font-size: 14px; }
-
-/* ============ Floating Button ============ */
-.fab {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ff6a00, #ff8533);
-  color: #fff;
-  font-size: 28px;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 6px 20px rgba(255,106,0,.4);
-  z-index: 80;
-  transition: transform .2s;
-  user-select: none;
-}
-.fab:active { transform: scale(.9); }
-
-/* ============ Bottom Sheet / Dialog ============ */
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.45);
-  z-index: 200;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .25s;
-}
-.overlay.show { opacity: 1; pointer-events: auto; }
-
-.bottom-sheet {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: var(--card);
-  border-radius: 20px 20px 0 0;
-  z-index: 201;
-  transform: translateY(100%);
-  transition: transform .3s cubic-bezier(.32,.72,0,1);
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.bottom-sheet.show { transform: translateY(0); }
-
-.sheet-handle {
-  width: 36px; height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  margin: 8px auto 4px;
-  flex-shrink: 0;
-}
-
-.sheet-header {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px 12px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.sheet-title { font-size: 17px; font-weight: 700; flex: 1; }
-.sheet-close {
-  width: 30px; height: 30px;
-  border-radius: 8px;
-  font-size: 18px;
-  color: var(--text-2);
-  display: flex; align-items: center; justify-content: center;
-  transition: background .15s;
-}
-.sheet-close:active { background: var(--bg); }
-
-.sheet-body {
-  padding: 16px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  flex: 1;
-}
-
-.sheet-footer {
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-/* ============ Form Elements ============ */
-.form-group { margin-bottom: 16px; }
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-2);
-  margin-bottom: 6px;
-}
-
-.type-switch {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.type-switch-btn {
-  flex: 1;
-  padding: 10px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 700;
-  border: 2px solid var(--border);
-  transition: all .2s;
-  background: var(--card);
-  color: var(--text-2);
-}
-.type-switch-btn.active.pickup {
-  border-color: var(--primary);
-  background: var(--primary-light);
-  color: var(--primary);
-}
-.type-switch-btn.active.send {
-  border-color: var(--purple);
-  background: var(--purple-light);
-  color: var(--purple-dark);
-}
-
-.input-field, .textarea-field {
-  width: 100%;
-  padding: 12px 14px;
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  font-size: 15px;
-  transition: border-color .2s;
-  background: var(--card);
-  color: var(--text);
-}
-.input-field:focus, .textarea-field:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-.textarea-field {
-  resize: vertical;
-  min-height: 80px;
-  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
-  line-height: 1.6;
-}
-
-.location-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.loc-tag {
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-  border: 2px solid var(--border);
-  transition: all .15s;
-  color: var(--text-2);
-}
-.loc-tag:active { transform: scale(.95); }
-.loc-tag.active {
-  border-color: var(--primary);
-  background: var(--primary-light);
-  color: var(--primary);
-}
-.loc-tag.is-send-tag.active {
-  border-color: var(--purple);
-  background: var(--purple-light);
-  color: var(--purple-dark);
-}
-
-/* ============ Buttons ============ */
-.btn {
-  flex: 1;
-  padding: 12px;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 700;
-  transition: all .15s;
-}
-.btn:active { transform: scale(.97); }
-.btn-primary { background: var(--primary); color: #fff; }
-.btn-secondary { background: var(--bg); color: var(--text-2); }
-.btn-danger { background: var(--danger); color: #fff; }
-.btn-purple { background: var(--purple); color: #fff; }
-
-/* ============ Action Menu (Long press) ============ */
-.action-menu .sheet-body { padding: 8px 16px 16px; }
-.action-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 8px;
-  font-size: 15px;
-  font-weight: 600;
-  border-bottom: 1px solid var(--border);
-  transition: background .15s;
-  width: 100%;
-  text-align: left;
-}
-.action-menu-item:last-child { border-bottom: none; }
-.action-menu-item:active { background: var(--bg); }
-.action-menu-item .ami-icon { font-size: 18px; width: 24px; text-align: center; }
-.action-menu-item.danger { color: var(--danger); }
-
-/* ============ Big Code Display ============ */
-.big-code-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.92);
-  z-index: 300;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .25s;
-  padding: 24px;
-}
-.big-code-overlay.show { opacity: 1; pointer-events: auto; }
-
-.big-code-label {
-  color: rgba(255,255,255,.5);
-  font-size: 14px;
-  margin-bottom: 8px;
-  letter-spacing: 2px;
-}
-.big-code-text {
-  font-size: clamp(48px, 14vw, 96px);
-  font-weight: 900;
-  color: #fff;
-  letter-spacing: 4px;
-  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
-  text-align: center;
-  line-height: 1.1;
-}
-.big-code-sub {
-  color: rgba(255,255,255,.6);
-  font-size: 16px;
-  margin-top: 16px;
-  text-align: center;
-}
-.big-code-close-hint {
-  color: rgba(255,255,255,.35);
-  font-size: 13px;
-  margin-top: 40px;
-}
-
-/* ============ Confirm Dialog ============ */
-.confirm-dialog {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) scale(.9);
-  background: var(--card);
-  border-radius: 16px;
-  z-index: 250;
-  width: 300px;
-  max-width: 85vw;
-  padding: 24px 20px 16px;
-  opacity: 0;
-  pointer-events: none;
-  transition: all .25s cubic-bezier(.32,.72,0,1);
-}
-.confirm-dialog.show {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translate(-50%, -50%) scale(1);
-}
-.confirm-title { font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 8px; }
-.confirm-msg { font-size: 14px; color: var(--text-2); text-align: center; margin-bottom: 20px; line-height: 1.6; }
-.confirm-buttons { display: flex; gap: 10px; }
-.confirm-buttons .btn { padding: 10px; font-size: 14px; }
-
-/* ============ Toast ============ */
-.toast {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: rgba(35,39,47,.92);
-  color: #fff;
-  padding: 10px 22px;
-  border-radius: 24px;
-  font-size: 14px;
-  font-weight: 600;
-  z-index: 400;
-  opacity: 0;
-  pointer-events: none;
-  transition: all .3s cubic-bezier(.32,.72,0,1);
-  white-space: nowrap;
-  max-width: 90vw;
-}
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-.toast.toast-error { background: var(--danger); }
-.toast.toast-success { background: var(--green); }
-
-/* ============ Location Management ============ */
-.loc-mgmt-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.loc-mgmt-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 14px;
-  background: var(--bg);
-  border-radius: 10px;
-  gap: 10px;
-}
-.loc-mgmt-item .lmi-name { flex: 1; font-weight: 600; font-size: 14px; }
-.loc-mgmt-item .lmi-del {
-  color: var(--danger);
-  font-size: 18px;
-  width: 28px; height: 28px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 6px;
-  transition: background .15s;
-}
-.loc-mgmt-item .lmi-del:active { background: #fee2e2; }
-.loc-mgmt-add {
-  display: flex;
-  gap: 8px;
-}
-.loc-mgmt-add .input-field { flex: 1; }
-.loc-mgmt-add .btn { flex: none; padding: 12px 18px; }
-
-/* ============ Settings Dialog ============ */
-.settings-field { margin-bottom: 14px; }
-.settings-field .sf-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-3);
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
-.settings-field .input-field { font-size: 14px; font-family: 'SF Mono', Consolas, monospace; }
-.settings-info {
-  font-size: 12px;
-  color: var(--text-3);
-  margin-top: 12px;
-  line-height: 1.6;
-  background: var(--bg);
-  padding: 10px 12px;
-  border-radius: 8px;
-}
-
-.settings-mode-toggle {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.mode-btn {
-  flex: 1;
-  padding: 10px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 700;
-  border: 2px solid var(--border);
-  transition: all .2s;
-  color: var(--text-2);
-}
-.mode-btn.active {
-  border-color: var(--primary);
-  background: var(--primary-light);
-  color: var(--primary);
-}
-
-/* ============ Tools Menu ============ */
-.tools-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 8px;
-  font-size: 15px;
-  font-weight: 600;
-  border-bottom: 1px solid var(--border);
-  transition: background .15s;
-  width: 100%;
-  text-align: left;
-}
-.tools-menu-item:last-child { border-bottom: none; }
-.tools-menu-item:active { background: var(--bg); }
-.tools-menu-item .tmi-icon { font-size: 18px; width: 24px; text-align: center; }
-
-/* ============ Responsive ============ */
-@media (min-width: 600px) {
-  .list-container { max-width: 600px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
-  .app-header > * { max-width: 600px; margin-left: auto; margin-right: auto; }
-  .tab-bar { max-width: 600px; margin: 0 auto; }
-  .fab { right: calc(50% - 300px + 24px); }
-}
-
-/* hidden file input */
-#fileInput { display: none; }
+  /* ===== GitHub 设置 ===== */
+  .gh-field { margin-bottom: 12px; }
+  .gh-field label { display: block; font-size: 12.5px; color: var(--text-2); font-weight: 600; margin-bottom: 4px; }
+  .gh-field input {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 11px;
+    padding: 8px 11px; outline: none; background: #fbfcfd; font-size: 14px;
+    transition: border-color .15s;
+  }
+  .gh-field input:focus { border-color: var(--primary); background: #fff; }
+  .gh-info {
+    font-size: 12px; color: var(--text-3); margin-top: 10px; line-height: 1.6;
+    background: var(--bg); padding: 10px 12px; border-radius: 8px;
+  }
+  .gh-mode-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+  .gh-mode-btn {
+    flex: 1; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 700;
+    border: 1.5px solid var(--border); transition: all .2s; color: var(--text-2); background: #f2f3f5;
+  }
+  .gh-mode-btn.active {
+    border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark);
+  }
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<header class="app-header">
-  <div class="header-top">
-    <span class="header-logo">📦</span>
-    <span class="header-title">取件码小本本</span>
-    <span class="sync-capsule" id="syncCapsule" onclick="manualSync()">
-      <span class="dot"></span>
-      <span id="syncText">未连接</span>
-    </span>
-    <button class="header-tools-btn" onclick="openToolsMenu()">🧰</button>
+<!-- 顶部 -->
+<div class="header">
+  <div class="row1">
+    <div class="logo">📦</div>
+    <h1>取件码小本本</h1>
+    <button class="sync-chip" id="syncChip" title="云同步状态，点击立即同步">
+      <span class="s-dot"></span><span id="syncText">…</span>
+    </button>
+    <button class="icon-btn" id="btnTools" title="工具">🧰</button>
   </div>
-  <div class="stats-row">
-    <div class="stat-card">
-      <span class="stat-icon">📬</span>
-      <div class="stat-info">
-        <span class="stat-num" id="statPending">0</span>
-        <span class="stat-label">待取件</span>
-      </div>
+  <div class="stats">
+    <div class="stat-chip">
+      <span class="k">待取件</span>
+      <span class="v" id="statPending">0</span>
     </div>
-    <div class="stat-card">
-      <span class="stat-icon">📮</span>
-      <div class="stat-info">
-        <span class="stat-num" id="statSend">0</span>
-        <span class="stat-label">寄件码</span>
-      </div>
+    <div class="stat-chip sendc">
+      <span class="k">寄件码</span>
+      <span class="v" id="statSend">0</span>
     </div>
   </div>
-</header>
-
-<!-- Tabs -->
-<nav class="tab-bar" id="tabBar">
-  <div class="tab-item active" data-tab="pending" onclick="switchTab('pending')">待取<span class="tab-badge" id="badgePending">0</span></div>
-  <div class="tab-item" data-tab="taken" onclick="switchTab('taken')">已取<span class="tab-badge" id="badgeTaken">0</span></div>
-  <div class="tab-item" data-tab="send" onclick="switchTab('send')">寄件码<span class="tab-badge" id="badgeSend">0</span></div>
-  <div class="tab-item" data-tab="error" onclick="switchTab('error')">错误<span class="tab-badge" id="badgeError">0</span></div>
-</nav>
-
-<!-- List -->
-<div class="list-container" id="listContainer">
 </div>
 
-<!-- Floating Add Button -->
-<button class="fab" onclick="openAddForm()">＋</button>
-
-<!-- ============ Add/Edit Form Sheet ============ -->
-<div class="overlay" id="overlayForm" onclick="closeSheet('form')"></div>
-<div class="bottom-sheet" id="sheetForm">
-  <div class="sheet-handle"></div>
-  <div class="sheet-header">
-    <span class="sheet-title" id="formTitle">添加取件码</span>
-    <button class="sheet-close" onclick="closeSheet('form')">✕</button>
+<!-- 工具面板（默认隐藏） -->
+<div class="tool-panel" id="toolPanel" style="display:none">
+  <div class="tool-row">
+    <button class="tool-btn" id="btnSync"><span class="t-icon">🔄</span>手动同步</button>
+    <button class="tool-btn" id="btnSettings"><span class="t-icon">☁️</span>云同步设置</button>
+    <button class="tool-btn" id="btnExport"><span class="t-icon">📤</span>导出备份</button>
+    <button class="tool-btn" id="btnImport"><span class="t-icon">📥</span>导入恢复</button>
+    <button class="tool-btn" id="btnClearDone"><span class="t-icon">🧹</span>清空已完成</button>
   </div>
-  <div class="sheet-body">
+  <input type="file" id="importFile" accept=".json" style="display:none">
+</div>
+
+<!-- Tab -->
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="pending">待取<span class="cnt" id="cntPending"></span></button>
+  <button class="tab" data-tab="done">已取<span class="cnt" id="cntDone"></span></button>
+  <button class="tab" data-tab="send">寄件码<span class="cnt" id="cntSend"></span></button>
+  <button class="tab" data-tab="err">错误<span class="cnt" id="cntErr"></span></button>
+</div>
+
+<!-- 列表 -->
+<div class="list" id="list"></div>
+
+<!-- 悬浮添加 -->
+<button class="fab" id="fab">＋</button>
+
+<!-- 添加/编辑模态 -->
+<div class="modal-mask" id="formMask">
+  <div class="modal form-modal">
+    <div class="m-head">
+      <h3 id="formTitle">➕ 记一条取件码</h3>
+      <button class="m-close" id="formClose">✕</button>
+    </div>
     <div class="type-switch" id="typeSwitch">
-      <button class="type-switch-btn active pickup" data-type="pickup" onclick="setFormType('pickup')">取件码</button>
-      <button class="type-switch-btn send" data-type="send" onclick="setFormType('send')">寄件码</button>
+      <button class="type-btn active" data-type="pickup" type="button">📦 取件码</button>
+      <button class="type-btn" data-type="send" type="button">📮 寄件码</button>
     </div>
-
-    <div class="form-group">
-      <label class="form-label" id="codeLabel">取件码</label>
-      <textarea class="textarea-field" id="inputCode" placeholder="每行一个" rows="3"></textarea>
+    <div class="field" id="fCode">
+      <label>取件码 / 单号<span class="req">*</span></label>
+      <textarea id="inCode" rows="1" placeholder="" autocomplete="off" enterkeyhint="enter"></textarea>
+      <div class="err">取件码不能为空哦</div>
+      <div class="code-hint"><span class="batch-badge" id="batchBadge"></span></div>
     </div>
-
-    <div class="form-group" id="locationGroup">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <label class="form-label">地点</label>
-        <button class="loc-setting-btn" onclick="closeSheet('form'); setTimeout(function(){openLocMgmt();}, 300);" style="background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:3px;">⚙️ 设置</button>
-      </div>
-      <div class="location-tags" id="locationTags"></div>
+    <div class="field" id="fieldLoc">
+      <label class="loc-label"><span>存放地点</span><button class="loc-manage" id="btnPlaces" type="button">⚙️ 管理</button></label>
+      <div class="quick-tags" id="locTags"></div>
+      <input type="text" id="inLocation" placeholder="其他地点可手动输入…" autocomplete="off">
     </div>
-
-    <div class="form-group">
-      <label class="form-label">收件人</label>
-      <input type="text" class="input-field" id="inputRecipient" placeholder="收件人">
+    <div class="field">
+      <label id="recipientLabel">收件人</label>
+      <input type="text" id="inRecipient" placeholder="" autocomplete="off">
     </div>
-
-    <div class="form-group">
-      <label class="form-label">备注</label>
-      <input type="text" class="input-field" id="inputNote" placeholder="备注">
+    <div class="field" id="fieldNote" style="display:none">
+      <label>备注</label>
+      <input type="text" id="inNote" placeholder="" autocomplete="off">
     </div>
-  </div>
-  <div class="sheet-footer">
-    <button class="btn btn-secondary" onclick="closeSheet('form')">取消</button>
-    <button class="btn btn-primary" id="formSubmitBtn" onclick="submitForm()">保存</button>
+    <button class="btn-submit" id="btnSave">提交</button>
   </div>
 </div>
 
-<!-- ============ Location Management Sheet ============ -->
-<div class="overlay" id="overlayLocMgmt" onclick="closeSheet('locMgmt')"></div>
-<div class="bottom-sheet" id="sheetLocMgmt">
-  <div class="sheet-handle"></div>
-  <div class="sheet-header">
-    <span class="sheet-title">地点管理</span>
-    <button class="sheet-close" onclick="closeSheet('locMgmt')">✕</button>
+<!-- 大字取件 -->
+<div class="bigcode-mask" id="bigMask">
+  <button class="b-close" id="bigClose">✕</button>
+  <div class="b-company" id="bCompany"></div>
+  <div class="b-code" id="bCode"></div>
+  <div class="b-loc" id="bLoc"></div>
+  <div class="b-tip">点击任意处关闭 · 亮度调高更易扫描</div>
+</div>
+
+<!-- 地点管理 -->
+<div class="modal-mask" id="placesMask">
+  <div class="modal">
+    <div class="m-head">
+      <h3>📍 管理存放地点</h3>
+      <button class="m-close" id="placesClose">✕</button>
+    </div>
+    <div class="places-list" id="placesList"></div>
+    <div class="place-add">
+      <input type="text" id="inNewPlace" placeholder="输入新地点名称" autocomplete="off">
+      <button id="btnAddPlace" type="button">添加</button>
+    </div>
+    <div class="p-tip">✎ 改名 · ✕ 删除 · 改名后已有记录会自动跟到新地点</div>
   </div>
-  <div class="sheet-body">
-    <div class="loc-mgmt-list" id="locMgmtList"></div>
-    <div class="loc-mgmt-add">
-      <input type="text" class="input-field" id="newLocInput" placeholder="输入新地点名称">
-      <button class="btn btn-primary" onclick="addLocation()">添加</button>
+</div>
+
+<!-- 确认框 -->
+<div class="confirm-mask" id="confirmMask">
+  <div class="confirm-box">
+    <p id="confirmText">确认删除？</p>
+    <div class="c-ops">
+      <button class="c-cancel" id="confirmCancel">取消</button>
+      <button class="c-ok" id="confirmOk">删除</button>
     </div>
   </div>
 </div>
 
-<!-- ============ Action Menu (Long Press) ============ -->
-<div class="overlay" id="overlayAction" onclick="closeSheet('action')"></div>
-<div class="bottom-sheet action-menu" id="sheetAction">
-  <div class="sheet-handle"></div>
-  <div class="sheet-body" id="actionMenuBody">
+<!-- 长按操作菜单 -->
+<div class="act-mask" id="actMask">
+  <div class="act-sheet">
+    <div class="act-title" id="actTitle"></div>
+    <button class="act-item err" id="actErr">⚠️ 标记错误</button>
+    <button class="act-item del" id="actDel">🗑 删除</button>
+    <button class="act-cancel" id="actCancel">取消</button>
   </div>
 </div>
 
-<!-- ============ Tools Menu ============ -->
-<div class="overlay" id="overlayTools" onclick="closeSheet('tools')"></div>
-<div class="bottom-sheet" id="sheetTools">
-  <div class="sheet-handle"></div>
-  <div class="sheet-header">
-    <span class="sheet-title">工具箱</span>
-    <button class="sheet-close" onclick="closeSheet('tools')">✕</button>
-  </div>
-  <div class="sheet-body">
-    <button class="tools-menu-item" onclick="closeSheet('tools'); openSettings()">
-      <span class="tmi-icon">☁️</span><span>GitHub云同步设置</span>
-    </button>
-    <button class="tools-menu-item" onclick="closeSheet('tools'); openLocMgmt()">
-      <span class="tmi-icon">📍</span><span>地点管理</span>
-    </button>
-    <button class="tools-menu-item" onclick="closeSheet('tools'); exportJSON()">
-      <span class="tmi-icon">📤</span><span>导出JSON备份</span>
-    </button>
-    <button class="tools-menu-item" onclick="closeSheet('tools'); document.getElementById('fileInput').click()">
-      <span class="tmi-icon">📥</span><span>导入JSON备份</span>
-    </button>
-    <button class="tools-menu-item" onclick="closeSheet('tools'); clearCompleted()">
-      <span class="tmi-icon">🧹</span><span>清空已完成记录</span>
-    </button>
-    <button class="tools-menu-item" onclick="closeSheet('tools'); manualSync()">
-      <span class="tmi-icon">🔄</span><span>手动同步</span>
-    </button>
-  </div>
-</div>
-<input type="file" id="fileInput" accept=".json" onchange="importJSON(event)">
-
-<!-- ============ Settings Sheet ============ -->
-<div class="overlay" id="overlaySettings" onclick="closeSheet('settings')"></div>
-<div class="bottom-sheet" id="sheetSettings">
-  <div class="sheet-handle"></div>
-  <div class="sheet-header">
-    <span class="sheet-title">GitHub 云同步</span>
-    <button class="sheet-close" onclick="closeSheet('settings')">✕</button>
-  </div>
-  <div class="sheet-body">
-    <div class="settings-mode-toggle">
-      <button class="mode-btn active" id="modeCloud" onclick="setSyncMode('cloud')">☁️ 云同步</button>
-      <button class="mode-btn" id="modeLocal" onclick="setSyncMode('local')">💾 本地模式</button>
-    </div>
-
-    <div class="settings-field">
-      <div class="sf-label">Personal Access Token</div>
-      <input type="password" class="input-field" id="cfgToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
-    </div>
-    <div class="settings-field">
-      <div class="sf-label">Owner（用户名）</div>
-      <input type="text" class="input-field" id="cfgOwner" placeholder="xwfpl">
-    </div>
-    <div class="settings-field">
-      <div class="sf-label">Repo（仓库名）</div>
-      <input type="text" class="input-field" id="cfgRepo" placeholder="xwfpl.github.io">
-    </div>
-    <div class="settings-field">
-      <div class="sf-label">Branch（分支）</div>
-      <input type="text" class="input-field" id="cfgBranch" placeholder="main">
-    </div>
-    <div class="settings-field">
-      <div class="sf-label">Data File（数据文件路径）</div>
-      <input type="text" class="input-field" id="cfgDataFile" placeholder="pickup-data.json">
-    </div>
-    <div class="settings-info">
-      ℹ️ Token 仅保存在浏览器 localStorage 中，不会上传到任何第三方服务器。需要创建具有 repo 权限的 Personal Access Token。
-    </div>
-  </div>
-  <div class="sheet-footer">
-    <button class="btn btn-secondary" onclick="closeSheet('settings')">取消</button>
-    <button class="btn btn-primary" onclick="saveSettings()">保存并连接</button>
-  </div>
-</div>
-
-<!-- ============ Big Code Display ============ -->
-<div class="big-code-overlay" id="bigCodeOverlay" onclick="closeBigCode()">
-  <div class="big-code-label" id="bigCodeLabel">取件码</div>
-  <div class="big-code-text" id="bigCodeText">---- ----</div>
-  <div class="big-code-sub" id="bigCodeSub"></div>
-  <div class="big-code-close-hint">点击任意位置关闭</div>
-</div>
-
-<!-- ============ Confirm Dialog ============ -->
-<div class="overlay" id="overlayConfirm" onclick="cancelConfirm()"></div>
-<div class="confirm-dialog" id="confirmDialog">
-  <div class="confirm-title" id="confirmTitle">确认</div>
-  <div class="confirm-msg" id="confirmMsg">确定要执行此操作吗？</div>
-  <div class="confirm-buttons">
-    <button class="btn btn-secondary" id="confirmCancelBtn" onclick="cancelConfirm()">取消</button>
-    <button class="btn btn-primary" id="confirmOkBtn">确定</button>
-  </div>
-</div>
-
-<!-- ============ Toast ============ -->
 <div class="toast" id="toast"></div>
 
+<!-- GitHub 设置 -->
+<div class="modal-mask" id="ghMask">
+  <div class="modal">
+    <div class="m-head">
+      <h3>☁️ GitHub 云同步</h3>
+      <button class="m-close" id="ghClose">✕</button>
+    </div>
+    <div class="gh-mode-toggle">
+      <button class="gh-mode-btn active" id="modeCloud" type="button">☁️ 云同步</button>
+      <button class="gh-mode-btn" id="modeLocal" type="button">💾 本地模式</button>
+    </div>
+    <div class="gh-field">
+      <label>Personal Access Token</label>
+      <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+    </div>
+    <div class="gh-field">
+      <label>Owner（用户名）</label>
+      <input type="text" id="ghOwner" placeholder="xwfpl" autocomplete="off">
+    </div>
+    <div class="gh-field">
+      <label>Repo（仓库名）</label>
+      <input type="text" id="ghRepo" placeholder="xwfpl.github.io" autocomplete="off">
+    </div>
+    <div class="gh-field">
+      <label>Branch（分支）</label>
+      <input type="text" id="ghBranch" placeholder="main" autocomplete="off">
+    </div>
+    <div class="gh-field">
+      <label>Data File（数据文件路径）</label>
+      <input type="text" id="ghDataFile" placeholder="pickup-data.json" autocomplete="off">
+    </div>
+    <div class="gh-info">
+      ℹ️ Token 仅保存在浏览器 localStorage 中，不会上传到任何第三方服务器。需要创建具有 repo 权限的 Personal Access Token。
+    </div>
+    <button class="btn-submit" id="ghSave" style="margin-top: 14px;">保存并连接</button>
+  </div>
+</div>
+
 <script>
-'use strict';
+(function () {
+  'use strict';
+  const STORAGE_KEY = 'pickup_codes_v1';
 
-// ============ Config & State ============
-var DEFAULT_CONFIG = {
-  owner: 'xwfpl',
-  repo: 'xwfpl.github.io',
-  branch: 'main',
-  dataFile: 'pickup-data.json',
-  token: '',
-  syncMode: 'cloud' // 'cloud' or 'local'
-};
-
-var DEFAULT_LOCATIONS = ['供电', '物业', '富乐C', '房管711', '寄件码'];
-
-var state = {
-  records: [],
-  locations: [],
-  config: {},
-  currentTab: 'pending',
-  collapsedGroups: {},
-  formType: 'pickup',
-  editingId: null,
-  selectedLocation: '',
-  syncStatus: 'offline', // 'synced', 'syncing', 'offline', 'local'
-  saveTimer: null,
-  longPressTimer: null,
-  longPressTarget: null
-};
-
-// ============ Utility Functions ============
-
-function genId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
-}
-
-function now() { return new Date().toISOString(); }
-
-// UTF-8 safe Base64 encode
-function utf8ToBase64(str) {
-  return btoa(unescape(encodeURIComponent(str)));
-}
-// UTF-8 safe Base64 decode
-function base64ToUtf8(b64) {
-  try {
-    return decodeURIComponent(escape(atob(b64)));
-  } catch(e) {
-    return atob(b64);
+  /* ================= 取件码自动格式化 ================= */
+  // 8位纯数字 → 1111-1111（其他格式保持原样）
+  function formatCode(v) {
+    const s = String(v).replace(/\s+/g, '');
+    if (/^\d{8}$/.test(s)) return s.slice(0, 4) + '-' + s.slice(4);
+    return v;
   }
-}
-
-// Format 8-digit code to 1111-1111
-function formatCode(code) {
-  if (!code) return '';
-  var s = String(code);
-  // If already has a dash, return as-is
-  if (s.indexOf('-') !== -1) return s;
-  // If length > 4 and no dash, insert dash after 4th char
-  if (s.length > 4) {
-    return s.slice(0, 4) + '-' + s.slice(4);
+  /* 输入即时格式化：打满4位自动补一个 "-"（1234- → 1234-5678）。
+     纯数字行每4位加一杠；超过8位（长单号）自动退回裸数字，带字母的行一概不动。 */
+  let fmtTimer = null;
+  function dashGroup(d, tail) {                       // 每4位一组；tail=true 时给未满组的末尾加提示杠
+    if (!d) return '';
+    if (d.length > 8) return d;                       // 超过8位当长单号看待：撤掉已插的杠，保持裸数字
+    let g = d.match(/\d{1,4}/g).join('-');
+    if (tail && d.length % 4 === 0 && d.length > 0 && d.length < 8) g += '-';
+    return g;
   }
-  return s;
-}
-
-// Parse multi-line input into individual codes
-function parseMultiLineCodes(text) {
-  if (!text) return [];
-  var lines = text.split(/\n/);
-  var codes = [];
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].trim();
-    if (!line) continue;
-    // Extract digits
-    var digits = line.replace(/\D/g, '');
-    if (digits.length > 0) {
-      codes.push(line);
+  function formatCodeLines(all) {
+    const el = $('inCode');
+    if (!el) return;
+    if (!all) {                                       // 只整理光标所在行，光标跟着走
+      const pos = el.selectionStart ?? el.value.length;
+      const before = el.value.slice(0, pos);
+      const idx = before.split('\n').length - 1;
+      const lines = el.value.split('\n');
+      const line = lines[idx];
+      const inLine = before.split('\n').pop().length;
+      const digitsBefore = line.slice(0, inLine).replace(/-/g, '').length;
+      const digits = line.replace(/-/g, '');
+      if (!/^\d+$/.test(digits)) return;                         // 只处理纯数字行
+      const grouped = dashGroup(digits, true);
+      if (grouped === line) return;
+      let cnt = 0, np = 0;                            // 按“光标前有几个数字”定位新光标
+      for (; np < grouped.length && cnt < digitsBefore; np++) if (/\d/.test(grouped[np])) cnt++;
+      while (np < grouped.length && !/\d/.test(grouped[np])) np++;
+      lines[idx] = grouped;
+      el.value = lines.join('\n');
+      const newPos = lines.slice(0, idx).join('\n').length + (idx ? 1 : 0) + np;
+      el.setSelectionRange(newPos, newPos);
+    } else {                                          // 失焦/回车：整理所有行，不留悬空横杠
+      const lines = el.value.split('\n');
+      let changed = false;
+      for (let i = 0; i < lines.length; i++) {
+        const d = lines[i].replace(/-/g, '');
+        if (d && /^\d+$/.test(d) && d.length <= 8) {
+          const g = dashGroup(d, false);
+          if (g !== lines[i]) { lines[i] = g; changed = true; }
+        }
+      }
+      if (changed) el.value = lines.join('\n');
     }
   }
-  return codes;
-}
 
-// ============ Storage ============
+  /* ================= 地点标签（可管理，云端同步） ================= */
+  const DEFAULT_PLACES = ['富乐新苑正门', '富乐新苑C栋', '凯乐花园', '榕苑3座', '榕苑门口', '阳明花园', '一景大厦'];
+  const PLACES_KEY = 'pickup_places_v1';
+  let places = loadPlaces();
+  let editingPlaceIdx = null;
 
-function loadConfig() {
-  try {
-    var saved = localStorage.getItem('pickup_config');
-    if (saved) {
-      state.config = JSON.parse(saved);
-    } else {
-      state.config = Object.assign({}, DEFAULT_CONFIG);
+  function loadPlaces() {
+    try {
+      const a = JSON.parse(localStorage.getItem(PLACES_KEY));
+      if (Array.isArray(a)) return a;
+    } catch (e) {}
+    return DEFAULT_PLACES.slice();
+  }
+  function savePlacesLocal() { localStorage.setItem(PLACES_KEY, JSON.stringify(places)); }
+  function renderLocTags() {
+    $('locTags').innerHTML = places.map(p =>
+      `<button class="quick-tag" data-loc="${esc(p)}" type="button">${esc(p)}</button>`).join('');
+  }
+
+  async function pushPlaces() {
+    savePlacesLocal(); renderLocTags(); syncLocTags();
+    if (!ghConfig.token) return;
+    // Places are saved as part of the main data file
+  }
+  async function syncPlaces() {
+    if (!ghConfig.token) return;
+    // Places are synced as part of the main data
+  }
+
+  function renderPlacesList() {
+    $('placesList').innerHTML = places.length ? places.map((p, i) =>
+      i === editingPlaceIdx
+        ? `<div class="place-row">
+             <input id="placeEditInput" value="${esc(p)}" autocomplete="off">
+             <button class="p-save" data-psave="${i}" type="button">✓</button>
+           </div>`
+        : `<div class="place-row">
+             <span class="p-name">📍 ${esc(p)}</span>
+             <span class="p-ops">
+               <button class="p-edit" data-pidx="${i}" type="button">✎</button>
+               <button class="p-del" data-pdel="${esc(p)}" type="button">✕</button>
+             </span>
+           </div>`
+    ).join('') : '<div class="p-empty">还没有地点，在下方添加一个吧</div>';
+    const inp = $('placeEditInput');
+    if (inp) { inp.focus(); inp.select(); inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') savePlaceEdit();
+      if (e.key === 'Escape') { editingPlaceIdx = null; renderPlacesList(); }
+    }); }
+  }
+
+  function savePlaceEdit() {
+    if (editingPlaceIdx == null) return;
+    const inp = $('placeEditInput');
+    const nv = inp ? inp.value.trim() : '';
+    const oldName = places[editingPlaceIdx];
+    if (nv && nv !== oldName) {
+      if (places.includes(nv)) { toast('已有同名地点'); return; }
+      places[editingPlaceIdx] = nv;
+      // 已有记录的地点一并迁移到新名字
+      let moved = 0;
+      records.forEach(r => { if (r.location === oldName) { r.location = nv; touch(r); moved++; } });
+      if (moved) { saveLocal(); render(); scheduleSync(); toast(`已改名，${moved} 条记录同步迁移`); }
+      else toast('已改名 ✓');
     }
-  } catch(e) {
-    state.config = Object.assign({}, DEFAULT_CONFIG);
+    editingPlaceIdx = null;
+    pushPlaces(); renderPlacesList();
   }
-  // Merge defaults
-  for (var k in DEFAULT_CONFIG) {
-    if (state.config[k] === undefined) {
-      state.config[k] = DEFAULT_CONFIG[k];
-    }
-  }
-}
 
-function saveConfig() {
-  localStorage.setItem('pickup_config', JSON.stringify(state.config));
-}
-
-function loadLocations() {
-  try {
-    var saved = localStorage.getItem('pickup_locations');
-    if (saved) {
-      state.locations = JSON.parse(saved);
-    } else {
-      state.locations = DEFAULT_LOCATIONS.slice();
-    }
-  } catch(e) {
-    state.locations = DEFAULT_LOCATIONS.slice();
-  }
-}
-
-function saveLocations() {
-  localStorage.setItem('pickup_locations', JSON.stringify(state.locations));
-}
-
-function loadLocalRecords() {
-  try {
-    var saved = localStorage.getItem('pickup_records');
-    if (saved) {
-      state.records = JSON.parse(saved);
-    }
-  } catch(e) {
-    state.records = [];
-  }
-}
-
-function saveLocalRecords() {
-  localStorage.setItem('pickup_records', JSON.stringify(state.records));
-}
-
-// ============ GitHub Sync ============
-
-function getApiBase() {
-  return 'https://api.github.com/repos/' + state.config.owner + '/' + state.config.repo + '/contents/' + state.config.dataFile;
-}
-
-function hasCloudConfig() {
-  return state.config.token && state.config.token.length > 0;
-}
-
-function setSyncStatus(status) {
-  state.syncStatus = status;
-  var capsule = document.getElementById('syncCapsule');
-  var text = document.getElementById('syncText');
-  capsule.classList.remove('syncing', 'offline', 'local');
-  switch(status) {
-    case 'synced':
-      text.textContent = '已同步';
-      break;
-    case 'syncing':
-      capsule.classList.add('syncing');
-      text.textContent = '同步中';
-      break;
-    case 'offline':
-      capsule.classList.add('offline');
-      text.textContent = '未连接';
-      break;
-    case 'local':
-      capsule.classList.add('local');
-      text.textContent = '本地模式';
-      break;
-  }
-}
-
-function githubHeaders() {
-  return {
-    'Authorization': 'Bearer ' + state.config.token,
-    'Accept': 'application/vnd.github+json',
-    'Content-Type': 'application/json'
-  };
-}
-
-async function fetchGitHubData() {
-  if (!hasCloudConfig()) {
-    setSyncStatus('offline');
-    return null;
-  }
-  setSyncStatus('syncing');
-  try {
-    var url = getApiBase() + '?ref=' + encodeURIComponent(state.config.branch);
-    var resp = await fetch(url, {
-      method: 'GET',
-      headers: githubHeaders()
+  /* ================= 数据层 ================= */
+  function loadLocal() {
+    let arr = [];
+    try { arr = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch (e) { arr = []; }
+    // 旧数据迁移：补 updatedAt + 取件码统一 1111-1111 格式
+    arr.forEach(r => {
+      if (!r.updatedAt) r.updatedAt = r.takenAt || r.createdAt || Date.now();
+      if (r.code) r.code = formatCode(r.code);
     });
-    if (resp.status === 404) {
-      // File doesn't exist yet, that's ok
-      setSyncStatus('synced');
-      return { content: null, sha: null };
-    }
-    if (!resp.ok) {
-      throw new Error('GitHub API error: ' + resp.status);
-    }
-    var data = await resp.json();
-    setSyncStatus('synced');
-    var content = data.content ? base64ToUtf8(data.content.replace(/\n/g, '')) : null;
-    return { content: content, sha: data.sha };
-  } catch(e) {
-    console.error('Fetch GitHub error:', e);
-    setSyncStatus('offline');
-    showToast('同步失败: ' + e.message, 'error');
-    return null;
+    return arr;
   }
-}
+  let records = loadLocal();
 
-async function saveGitHubData(records, sha) {
-  if (!hasCloudConfig()) {
-    setSyncStatus('offline');
-    return false;
+  function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+  function visRecords() { return records.filter(r => !r.deleted && r.code); }
+  function touch(r) { r.updatedAt = Date.now(); }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
-  setSyncStatus('syncing');
-  try {
-    var content = utf8ToBase64(JSON.stringify(records, null, 2));
-    var body = {
-      message: 'Update pickup codes ' + new Date().toISOString(),
-      content: content,
-      branch: state.config.branch
-    };
-    if (sha) {
-      body.sha = sha;
-    }
-    var resp = await fetch(getApiBase(), {
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getMonth()+1}月${d.getDate()}日 ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  /* ---------- 状态 ---------- */
+  let curTab = 'pending';
+  let editingId = null;
+
+  /* ---------- 分组展开状态 ----------
+     每次打开页面：默认全部折叠（只显示地点分组头）
+     会话内点开的组保持展开，刷新/重开后又回到折叠 */
+  let expandedGroups = new Set();
+  let groupCache = new Map();
+
+  /* ================= GitHub 云同步 ================= */
+  const DEFAULT_GH = { token: '', owner: 'xwfpl', repo: 'xwfpl.github.io', branch: 'main', dataFile: 'pickup-data.json', mode: 'cloud' };
+  let ghConfig = loadGHConfig();
+  let syncTimer = null, syncing = false;
+  let syncRetryTimer = null, syncFails = 0;
+  let lastSyncOK = 0;
+  let syncWatchdog = null;
+
+  function loadGHConfig() {
+    try {
+      const s = JSON.parse(localStorage.getItem('pickup_gh_config'));
+      return Object.assign({}, DEFAULT_GH, s || {});
+    } catch (e) { return Object.assign({}, DEFAULT_GH); }
+  }
+  function saveGHConfig() { localStorage.setItem('pickup_gh_config', JSON.stringify(ghConfig)); }
+
+  function ghHeaders() {
+    return { 'Authorization': 'Bearer ' + ghConfig.token, 'Accept': 'application/vnd.github+json' };
+  }
+  function ghApiBase() {
+    return `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}`;
+  }
+
+  function setSyncStatus(s) {
+    const chip = $('syncChip'), txt = $('syncText');
+    if (!ghConfig.token || ghConfig.mode === 'local') { chip.className = 'sync-chip local'; txt.textContent = '本地模式'; return; }
+    if (s === 'ok') { chip.className = 'sync-chip ok'; txt.textContent = '已同步'; }
+    else if (s === 'busy') { chip.className = 'sync-chip busy'; txt.textContent = '同步中…'; }
+    else { chip.className = 'sync-chip off'; txt.textContent = '未连接'; }
+  }
+
+  async function apiGet() {
+    const url = `${ghApiBase()}/contents/${ghConfig.dataFile}?ref=${ghConfig.branch}`;
+    const res = await fetch(url, { headers: ghHeaders(), cache: 'no-store' });
+    if (res.status === 404) return { records: [] };
+    if (!res.ok) throw new Error('get fail: ' + res.status);
+    const data = await res.json();
+    const content = data.content ? atob(data.content.replace(/\n/g, '')) : '{}';
+    const parsed = JSON.parse(content);
+    return { records: parsed.records || [], places: parsed.places || [], _sha: data.sha };
+  }
+  async function apiPost(recs) {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify({ records: recs, places }))));
+    let sha = null;
+    try {
+      const check = await fetch(`${ghApiBase()}/contents/${ghConfig.dataFile}?ref=${ghConfig.branch}`, { headers: ghHeaders(), cache: 'no-store' });
+      if (check.ok) { const d = await check.json(); sha = d.sha; }
+    } catch (e) {}
+    const res = await fetch(`${ghApiBase()}/contents/${ghConfig.dataFile}`, {
       method: 'PUT',
-      headers: githubHeaders(),
-      body: JSON.stringify(body)
+      headers: Object.assign(ghHeaders(), { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ message: 'sync pickup codes', content, sha, branch: ghConfig.branch })
     });
-    if (!resp.ok) {
-      var errData = await resp.json().catch(function(){ return {}; });
-      throw new Error(errData.message || ('HTTP ' + resp.status));
-    }
-    var data = await resp.json();
-    setSyncStatus('synced');
-    currentSha = data.content ? data.content.sha : sha;
-    return true;
-  } catch(e) {
-    console.error('Save GitHub error:', e);
-    setSyncStatus('offline');
-    showToast('保存失败: ' + e.message, 'error');
-    return false;
+    if (!res.ok) throw new Error('post fail: ' + res.status);
   }
-}
 
-var currentSha = null;
-
-// Merge records: same id takes newer updatedAt
-function mergeRecords(localRecords, remoteRecords) {
-  if (!remoteRecords || remoteRecords.length === 0) return localRecords.slice();
-  var merged = {};
-  var allIds = {};
-  // Add local
-  for (var i = 0; i < localRecords.length; i++) {
-    var r = localRecords[i];
-    merged[r.id] = r;
-    allIds[r.id] = true;
+  // 记录级合并：同 id 取 updatedAt 新者；清理 7 天前的删除墓碑
+  function mergeRecords(local, cloud) {
+    const map = new Map();
+    const put = r => {
+      if (!r || !r.id) return;
+      const rec = r.code ? Object.assign({}, r, { code: formatCode(r.code) }) : r;
+      const old = map.get(rec.id);
+      if (!old || (rec.updatedAt || 0) >= (old.updatedAt || 0)) map.set(rec.id, rec);
+    };
+    local.forEach(put); (cloud || []).forEach(put);
+    const cutoff = Date.now() - 7 * 864e5;
+    return [...map.values()].filter(r => !(r.deleted && r.deletedAt && r.deletedAt < cutoff));
   }
-  // Merge remote
-  for (var j = 0; j < remoteRecords.length; j++) {
-    var rr = remoteRecords[j];
-    allIds[rr.id] = true;
-    if (!merged[rr.id]) {
-      merged[rr.id] = rr;
+
+  async function syncNow(manual) {
+    if (!ghConfig.token || ghConfig.mode === 'local' || syncing) return;
+    syncing = true; setSyncStatus('busy');
+    try {
+      const cloud = await apiGet();
+      // 同步地点
+      if (Array.isArray(cloud.places) && JSON.stringify(cloud.places) !== JSON.stringify(places)) {
+        places = cloud.places;
+        savePlacesLocal(); renderLocTags(); syncLocTags();
+      }
+      const merged = mergeRecords(records, cloud.records || []);
+      const sig = arr => JSON.stringify(arr.slice().sort((a, b) => (a.id < b.id ? -1 : 1)));
+      if (sig(merged) !== sig(records)) {
+        records = merged; saveLocal(); render();
+      }
+      await apiPost(merged);
+      setSyncStatus('ok');
+      syncFails = 0; lastSyncOK = Date.now();
+      if (syncRetryTimer) { clearTimeout(syncRetryTimer); syncRetryTimer = null; }
+      stopSyncWatchdog();
+      if (manual) toast('已是最新，云端同步完成 ☁');
+    } catch (e) {
+      setSyncStatus('off');
+      if (manual) toast('同步失败，将自动重试');
+      if (!syncRetryTimer) {
+        syncFails++;
+        syncRetryTimer = setTimeout(() => { syncRetryTimer = null; syncNow(false); }, 3000);
+      }
+      startSyncWatchdog();
+    } finally { syncing = false; }
+  }
+
+  function scheduleSync() {
+    if (!ghConfig.token || ghConfig.mode === 'local') return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => syncNow(false), 1200);
+  }
+
+  /* 断连自愈看门狗 */
+  function startSyncWatchdog() {
+    if (!ghConfig.token || ghConfig.mode === 'local' || syncWatchdog) return;
+    syncWatchdog = setInterval(() => {
+      const st = $('syncText').textContent;
+      const recentOK = (Date.now() - lastSyncOK) < 4000;
+      if (st !== '已同步' && !syncing && !recentOK) syncNow(false);
+      else if (st === '已同步') stopSyncWatchdog();
+    }, 3000);
+  }
+  function stopSyncWatchdog() {
+    if (syncWatchdog) { clearInterval(syncWatchdog); syncWatchdog = null; }
+  }
+
+  /* ================= 渲染 ================= */
+  const $ = id => document.getElementById(id);
+
+  function render() {
+    const vis = visRecords();
+    const actAt = r => r.takenAt || r.errAt || r.createdAt;          // 记录最近活跃时间
+    const err = vis.filter(r => r.errAt);                            // 错误记录（独立一类）
+    const normal = vis.filter(r => !r.errAt);                        // 其余正常记录
+    const pending = normal.filter(r => r.type !== 'send' && !r.takenAt); // 待取的取件码
+    const sendList = normal.filter(r => r.type === 'send' && !r.takenAt); // 待收走的寄件码
+    const done = normal.filter(r => r.takenAt);
+    $('statPending').textContent = pending.length;
+    $('statSend').textContent = sendList.length;
+    $('cntPending').textContent = (pending.length + sendList.length) ? ` ${pending.length + sendList.length}` : '';
+    $('cntErr').textContent = err.length ? ` ${err.length}` : '';
+    $('cntDone').textContent = done.length ? ` ${done.length}` : '';
+    $('cntSend').textContent = sendList.length ? ` ${sendList.length}` : '';
+
+    let list;
+    if (curTab === 'err') {
+      list = err;
+    } else if (curTab === 'done') {
+      list = done;
+    } else if (curTab === 'send') {
+      list = normal.filter(r => r.type === 'send'); // 全部正常寄件码（含已收走）
     } else {
-      var local = merged[rr.id];
-      var localTime = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
-      var remoteTime = rr.updatedAt ? new Date(rr.updatedAt).getTime() : 0;
-      if (remoteTime > localTime) {
-        merged[rr.id] = rr;
+      list = normal.filter(r => !r.takenAt);         // 待取：取件+寄件（不含错误）
+    }
+
+    // ===== 分组：寄件码独立一组置顶，取件码按存放地点分组 =====
+    groupCache = new Map();
+    const groups = new Map();
+    list.forEach(r => {
+      const key = r.type === 'send' ? '__send__' : (r.location ? r.location.trim() : '');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    });
+    const groupArr = [...groups.entries()].map(([name, items]) => {
+      items.sort((a, b) => actAt(b) - actAt(a));
+      return { name, items, latest: Math.max(...items.map(r => actAt(r))) };
+    }).sort((a, b) => {
+      // 寄件码组永远置顶，其余按最近活跃排序
+      const sa = a.name === '__send__' ? 1 : 0, sb = b.name === '__send__' ? 1 : 0;
+      if (sa !== sb) return sb - sa;
+      return b.latest - a.latest;
+    });
+
+    const el = $('list');
+    if (!list.length) {
+      const emptyCfg = curTab === 'pending'
+        ? { icon: '📭', msg: '还没有待处理的快递' }
+        : curTab === 'err'
+        ? { icon: '⚠️', msg: '没有错误取件码' }
+        : curTab === 'send'
+        ? { icon: '📮', msg: '还没有寄件码记录' }
+        : { icon: '🎉', msg: '这里空空如也' };
+      el.innerHTML = `<div class="empty">
+        <div class="e-icon">${emptyCfg.icon}</div>
+        <p>${emptyCfg.msg}</p>
+        <div class="hint">${curTab === 'send' ? '客户寄件时点 ＋ 选 📮 寄件码记下' : '点击右下角 ＋ 添加取件码 / 寄件码'}</div>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = groupArr.map(g => {
+      const isSendGroup = g.name === '__send__';
+      const isCollapsed = !expandedGroups.has(g.name);
+      groupCache.set(g.name, g.items);
+      const pendingCnt = g.items.filter(r => !r.errAt && !r.takenAt).length;
+      const word = isSendGroup ? '收' : '取';
+      const cntText = curTab === 'err'
+        ? `${g.items.length} 条错误码`
+        : curTab === 'pending'
+        ? `${g.items.length} 件待${word}`
+        : (pendingCnt === g.items.length ? `${g.items.length} 件` : `${pendingCnt} 待${word} / ${g.items.length - pendingCnt} 已${word}`);
+      const displayName = curTab === 'err'
+        ? (isSendGroup ? '寄件码（错误）' : (g.name || '未指定地点'))
+        : (isSendGroup ? '寄件码' : (g.name || '未指定地点'));
+      return `<div class="group">
+        <div class="group-head ${isSendGroup ? 'send-head' : ''}" data-group="${esc(g.name)}">
+          <div class="g-left">
+            <span class="g-arrow">${isCollapsed ? '▸' : '▾'}</span>
+            <span class="g-icon">${isSendGroup ? '📮' : (g.name ? '📍' : '❔')}</span>
+            <span class="g-name">${esc(displayName)}</span>
+            <span class="g-cnt ${isSendGroup ? 'send-cnt' : ''}">${cntText}</span>
+          </div>
+        </div>
+        <div class="group-cards" style="${isCollapsed ? 'display:none' : ''}">
+          ${g.items.map(r => cardHTML(r)).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function cardHTML(r) {
+    const taken = !!r.takenAt;
+    const isErr = !!r.errAt;
+    const isSend = r.type === 'send';
+    const metaRows = [];
+    // 寄件码的备注跟在寄件人后面，不再独占一行
+    const dot = isErr
+      ? '<span class="status-dot err">⚠️ 错误</span>'
+      : taken
+      ? (isSend ? '<span class="status-dot sendok">✓ 已收走</span>' : '<span class="status-dot ok">✓ 已取</span>')
+      : (isSend ? '<span class="status-dot send">📮 寄件</span>' : '<span class="status-dot pending">待取</span>');
+    const btnText = isErr ? '↩ 恢复' : (taken ? '↩ 恢复' : (isSend ? '✓ 已收' : '✓ 已取'));
+    // 收件人/寄件人 + 备注：合并成一行小字跟在取件码后面
+    let recText = '';
+    if (r.recipient) recText += esc(r.recipient);
+    if (r.note) recText += (recText ? ' · ' : '') + esc(r.note);
+    const recLabel = recText ? `<span class="code-recipient">${recText}</span>` : '';
+    return `<div class="card ${isErr ? 'err' : ''} ${taken ? 'taken' : ''} ${isSend ? 'send' : ''}" data-card="${r.id}">
+      <div class="code-zone">
+        <div class="code-main">
+          ${dot}
+          <div class="code-line">
+            <span class="code-value ${isErr ? 'err-code' : ''}">${esc(r.code)}</span>${recLabel}
+          </div>
+        </div>
+        ${isErr
+          ? `<button class="take-btn" data-err-undo="${r.id}" title="取消标记，恢复为正常待取">↩ 恢复</button>`
+          : `<button class="take-btn ${isSend ? 'send-btn' : ''} ${taken ? 'is-taken' : ''}" data-toggle="${r.id}">${btnText}</button>`}
+      </div>
+      ${metaRows.length ? `<div class="meta">${metaRows.join('')}</div>` : ''}
+    </div>`;
+  }
+
+  /* ================= Toast ================= */
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  /* ================= 复制 ================= */
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => toast('已复制：' + text)).catch(() => fallbackCopy(text));
+    } else fallbackCopy(text);
+  }
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;left:-999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast('已复制：' + text); }
+    catch (e) { toast('复制失败，请长按手动复制'); }
+    document.body.removeChild(ta);
+  }
+
+  /* ================= 表单 ================= */
+  let curType = 'pickup'; // pickup=取件码  send=寄件码
+
+  function setType(t) {
+    curType = t;
+    document.querySelectorAll('#typeSwitch .type-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.type === t));
+    const isSend = t === 'send';
+    // 寄件码不需要存放地点；收件人变寄件人；备注两种类型都能填
+    $('fieldLoc').style.display = isSend ? 'none' : '';
+    $('fieldNote').style.display = '';
+    $('recipientLabel').textContent = isSend ? '寄件人' : '收件人';
+    $('formTitle').textContent = editingId
+      ? (isSend ? '✏️ 编辑寄件码' : '✏️ 编辑取件码')
+      : (isSend ? '➕ 记一条寄件码' : '➕ 记一条取件码');
+  }
+
+  function resetFormModal() {
+    const modal = document.querySelector('#formMask .modal');
+    if (modal) modal.style.marginTop = '';
+  }
+  function adjustFormModalForKeyboard() {
+    const vv = window.visualViewport;
+    const modal = document.querySelector('#formMask .modal');
+    if (!vv || !modal || !$('formMask').classList.contains('show')) return;
+    const keyboard = window.innerHeight - vv.height;
+    if (keyboard > 100) {
+      // 键盘弹出：整体向上提，使弹窗底部露出键盘上方，但不顶出屏幕顶端
+      const maxShift = Math.max(0, modal.getBoundingClientRect().top - 20);
+      const shift = Math.min(maxShift, Math.max(0, keyboard - 40));
+      modal.style.marginTop = shift ? `-${shift}px` : '';
+    } else {
+      modal.style.marginTop = '';
+    }
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', adjustFormModalForKeyboard);
+  }
+
+  function openForm(rec) {
+    editingId = rec ? rec.id : null;
+    setType(rec && rec.type === 'send' ? 'send' : 'pickup');
+    $('inCode').value = rec ? rec.code : '';
+    $('inRecipient').value = rec ? rec.recipient || '' : '';
+    $('inLocation').value = rec ? rec.location || '' : '';
+    $('inNote').value = rec ? rec.note || '' : '';
+    $('fCode').classList.remove('invalid');
+    updateBatchUI();
+    syncLocTags();
+    $('formMask').classList.add('show');
+    setTimeout(() => { $('inCode').focus(); adjustFormModalForKeyboard(); }, 260);
+  }
+  function closeForm() { $('formMask').classList.remove('show'); resetFormModal(); }
+
+  /* 取件码框当前有效的取件码条数（按换行拆分，忽略空行与纯空格） */
+  function codeLinesCount() {
+    return $('inCode').value.split(/\n/).map(s => s.trim()).filter(Boolean).length;
+  }
+  /* 多行录入提示：新增时实时显示“将录入 N 条”；编辑时只显示单条提示 */
+  function updateBatchUI() {
+    const isAdd = !editingId;
+    const hint = $('batchHint'), badge = $('batchBadge');
+    if (hint) hint.style.display = isAdd ? '' : 'none';
+    if (badge) {
+      if (!isAdd) {
+        badge.style.display = 'none'; badge.textContent = ''; return;
+      }
+      const n = codeLinesCount();
+      badge.style.display = n > 0 ? 'inline-block' : 'none';
+      badge.textContent = n > 0 ? '将录入 ' + n + ' 条' : '';
+    }
+  }
+
+  /* 取件码框：把输入的多行内容拆成多个取件码（新增模式可一次录多条）。
+     拆行规则：按换行/分号分隔，每段取 trim 后内容，空段忽略。
+     返回去重前的行数组（均为非空、已 formatCode）。 */
+  function parseCodes(raw) {
+    const out = [];
+    String(raw).split(/\r?\n|;/).forEach(seg => {
+      const c = formatCode(seg.trim().replace(/-+$/g, ''));   // 去掉末尾未闭合的提示横杠
+      if (c) out.push(c);
+    });
+    return out;
+  }
+
+  /* 保存按钮提交。新增模式：把多行拆成多条一次性录入（地点/收件人/备注共享）。
+     编辑模式：把第一行作为该条新取件码（只改这一条）。成功则关闭弹窗。 */
+  function saveForm() {
+    const isSend = curType === 'send';
+    const codes = parseCodes($('inCode').value);
+    if (codes.length === 0) {
+      $('fCode').classList.add('invalid');
+      $('inCode').focus();
+      return;
+    }
+    const data = {
+      recipient: $('inRecipient').value.trim(),
+      location: isSend ? '' : $('inLocation').value.trim(),
+      note: $('inNote').value.trim()
+    };
+    if (editingId) {
+      // 编辑：只改这一条（取第一个取件码，多余行忽略）
+      const r = records.find(x => x.id === editingId);
+      if (r) {
+        Object.assign(r, data, { code: codes[0] });
+        if (isSend) r.type = 'send'; else delete r.type;
+        touch(r);
+      }
+      toast('已修改 ✓');
+      saveLocal(); closeForm(); render(); scheduleSync();
+      return;
+    }
+    // —— 新增：一次录入多条 ——
+    const now = Date.now();
+    codes.forEach(code => {
+      const rec = Object.assign(
+        { id: uid(), createdAt: now, takenAt: null, updatedAt: now },
+        data, { code }
+      );
+      if (isSend) rec.type = 'send';
+      records.push(rec);
+    });
+    saveLocal(); closeForm(); render(); scheduleSync();
+    const n = codes.length;
+    if (n > 1) toast('已记下 ' + n + ' 条 ' + (isSend ? '寄件码 📮' : '取件码 📦'));
+    else toast(isSend ? '已记下，等快递员来收 📮' : '已记下，记得去取件哦 📦');
+  }
+
+  /* ================= 确认框 ================= */
+  let confirmAction = null;
+  function confirmAsk(text, okText, green, fn) {
+    $('confirmText').textContent = text;
+    const ok = $('confirmOk');
+    ok.textContent = okText;
+    ok.className = 'c-ok' + (green ? ' green' : '');
+    confirmAction = fn;
+    $('confirmMask').classList.add('show');
+  }
+  function closeConfirm() { $('confirmMask').classList.remove('show'); confirmAction = null; }
+
+  /* ================= 事件 ================= */
+  $('fab').addEventListener('click', () => openForm(null));
+  $('typeSwitch').addEventListener('click', e => {
+    const b = e.target.closest('.type-btn');
+    if (b) setType(b.dataset.type);
+  });
+  $('formClose').addEventListener('click', closeForm);
+  $('formMask').addEventListener('click', e => { if (e.target === $('formMask')) closeForm(); });
+  $('btnSave').addEventListener('click', saveForm);
+  // 取件码为多行框：回车即换行，不提交；输入时实时统计可录入条数，点提交按钮才真正保存
+  $('inCode').addEventListener('input', () => {
+    formatCodeLines(false);                            // 打满4位即时补横杠
+    $('fCode').classList.remove('invalid');
+    updateBatchUI();
+  });
+  $('inCode').addEventListener('blur', () => { clearTimeout(fmtTimer); formatCodeLines(true); });
+  $('inCode').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { clearTimeout(fmtTimer); formatCodeLines(true); }
+    // 退格：光标紧跟自动插入的横杠时，连同前面的数字一起删，避免“删不动”
+    if (e.key === 'Backspace') {
+      const el = $('inCode');
+      const pos = el.selectionStart;
+      if (el.selectionEnd === pos && pos > 0 && el.value[pos - 1] === '-') {
+        e.preventDefault();
+        el.setRangeText('', Math.max(0, pos - 2), pos, 'end');
+        el.dispatchEvent(new Event('input', { bubbles: true }));
       }
     }
-  }
-  var result = [];
-  for (var id in merged) {
-    result.push(merged[id]);
-  }
-  // Sort by createdAt desc
-  result.sort(function(a,b) {
-    var ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    var tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-    return tb - ta;
   });
-  return result;
-}
 
-async function pullFromGitHub() {
-  if (state.config.syncMode === 'local') {
-    setSyncStatus('local');
-    return;
+  // 固定地点勾选
+  document.addEventListener('click', e => {
+    const tag = e.target.closest('.quick-tag');
+    if (!tag) return;
+    if (tag.dataset.loc) {
+      const cur = $('inLocation').value.trim();
+      $('inLocation').value = (cur === tag.dataset.loc) ? '' : tag.dataset.loc;
+      syncLocTags();
+    }
+  });
+
+  // 地点标签与输入框联动高亮
+  function syncLocTags() {
+    const v = $('inLocation').value.trim();
+    document.querySelectorAll('#locTags .quick-tag').forEach(t => {
+      t.classList.toggle('active', t.dataset.loc === v);
+    });
   }
-  if (!hasCloudConfig()) {
-    setSyncStatus('offline');
-    // Show settings on first load
-    openSettings();
-    return;
+  $('inLocation').addEventListener('input', syncLocTags);
+
+  // 地点管理
+  $('btnPlaces').addEventListener('click', () => {
+    editingPlaceIdx = null;
+    renderPlacesList();
+    $('placesMask').classList.add('show');
+  });
+  $('placesClose').addEventListener('click', () => $('placesMask').classList.remove('show'));
+  $('placesMask').addEventListener('click', e => { if (e.target === $('placesMask')) $('placesMask').classList.remove('show'); });
+
+  function addPlace() {
+    const v = $('inNewPlace').value.trim();
+    if (!v) return;
+    if (places.includes(v)) { toast('这个地点已存在'); return; }
+    places.push(v);
+    $('inNewPlace').value = '';
+    pushPlaces(); renderPlacesList();
+    toast('已添加：' + v);
   }
-  var result = await fetchGitHubData();
-  if (result === null) return;
-  if (result.content) {
-    try {
-      var remoteRecords = JSON.parse(result.content);
-      if (Array.isArray(remoteRecords)) {
-        state.records = mergeRecords(state.records, remoteRecords);
-        saveLocalRecords();
-        currentSha = result.sha;
+  $('btnAddPlace').addEventListener('click', addPlace);
+  $('inNewPlace').addEventListener('keydown', e => { if (e.key === 'Enter') addPlace(); });
+
+  $('placesList').addEventListener('click', e => {
+    const editBtn = e.target.closest('.p-edit');
+    if (editBtn) { editingPlaceIdx = +editBtn.dataset.pidx; renderPlacesList(); return; }
+    const saveBtn = e.target.closest('.p-save');
+    if (saveBtn) { savePlaceEdit(); return; }
+    const delBtn = e.target.closest('.p-del');
+    if (delBtn) {
+      const name = delBtn.dataset.pdel;
+      places = places.filter(p => p !== name);
+      pushPlaces(); renderPlacesList();
+      toast('已删除：' + name);
+    }
+  });
+
+  // Tab
+  function switchTab(name) {
+    curTab = name;
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === name));
+    render();
+  }
+  $('tabs').addEventListener('click', e => {
+    const t = e.target.closest('.tab');
+    if (!t) return;
+    switchTab(t.dataset.tab);
+  });
+
+  /* ================= 长按取件码 → 操作菜单（错误 / 删除） ================= */
+  let longPressFired = false;      // 长按已弹出菜单后，抑制松手的那次单击
+  let lpTimer = null, lpRecId = null, lpMoved = false;
+  let actRecId = null;             // 当前操作菜单指向的记录 id
+
+  function openActMenu(recId) {
+    const rec = records.find(r => r.id === recId && !r.deleted);
+    if (!rec) return;
+    actRecId = recId;
+    const loc = rec.location || (rec.type === 'send' ? '寄件码' : '取件码');
+    $('actTitle').innerHTML = `<b>${esc(rec.code)}</b>${loc ? ' · ' + esc(loc) : ''}`;
+    $('actErr').textContent = rec.errAt ? '↩ 取消错误标记' : '⚠️ 标记错误';
+    $('actMask').classList.add('show');
+  }
+  function closeActMenu() { $('actMask').classList.remove('show'); actRecId = null; }
+
+  // 标记错误 / 取消错误（从长按菜单触发），复用原“错误按钮”逻辑
+  function actMarkErr() {
+    const rec = records.find(r => r.id === actRecId && !r.deleted);
+    if (!rec) { closeActMenu(); return; }
+    if (rec.errAt) { delete rec.errAt; touch(rec); saveLocal(); scheduleSync(); render(); toast('已恢复为正常待取 ✓'); }
+    else { rec.errAt = Date.now(); touch(rec); saveLocal(); scheduleSync(); switchTab('err'); toast('已标记错误，移入「错误」页 ⚠️'); }
+    closeActMenu();
+  }
+  // 删除：墓碑化并同步到云端（跨设备生效）
+  function actDelete() {
+    const rec = records.find(r => r.id === actRecId && !r.deleted);
+    closeActMenu();
+    if (!rec) return;
+    confirmAsk(`确认删除这一条？\n${rec.code}`, '删除', false, () => {
+      rec.deleted = true; rec.deletedAt = Date.now(); touch(rec);
+      saveLocal(); render(); scheduleSync();
+      toast('已删除');
+    });
+  }
+  $('actErr').addEventListener('click', actMarkErr);
+  $('actDel').addEventListener('click', actDelete);
+  $('actCancel').addEventListener('click', closeActMenu);
+  $('actMask').addEventListener('click', e => { if (e.target === $('actMask')) closeActMenu(); });
+
+  // 长按检测：按住约 600ms 未移动即视为长按（委托到 list，兼容触屏与鼠标）
+  const LP_MS = 600, LP_MOVE = 10;
+  function lpCancel() {
+    if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+    lpRecId = null;
+  }
+  function lpStart(card) {
+    lpCancel();
+    lpRecId = card.dataset.card; lpMoved = false;
+    lpTimer = setTimeout(() => {
+      lpTimer = null;
+      if (lpRecId) {
+        longPressFired = true;       // 松手时的 click 会被拦截，避免误开编辑
+        openActMenu(lpRecId);
+        // 轻微触感反馈
+        try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+      }
+    }, LP_MS);
+  }
+  $('list').addEventListener('pointerdown', e => {
+    const card = e.target.closest('.card');
+    if (card && card.dataset.card) lpStart(card);
+  });
+  $('list').addEventListener('pointermove', e => {
+    if (!lpTimer) return;
+    const card = e.target.closest('.card');
+    if (!card || card.dataset.card !== lpRecId) { lpCancel(); return; }
+    // 移动超阈值则视为滚动，取消长按
+    if (e.pointerType !== 'mouse' && e.movementX * e.movementX + e.movementY * e.movementY > LP_MOVE * LP_MOVE) {
+      lpMoved = true; lpCancel();
+    }
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => {
+    $('list').addEventListener(ev, () => { lpCancel(); });
+  });
+
+  // 列表操作（事件委托）
+  $('list').addEventListener('click', e => {
+    // 长按刚弹出过菜单的这一次 click（松手触发）不再作为单击处理，避免误打开编辑
+    if (longPressFired) { longPressFired = false; return; }
+    // 错误页内"恢复"按钮：取消标记，回到正常待取
+    const undo = e.target.closest('[data-err-undo]');
+    if (undo) {
+      e.stopPropagation();
+      const rec = records.find(r => r.id === undo.dataset.errUndo && !r.deleted);
+      if (rec) {
+        delete rec.errAt;
+        touch(rec);
+        saveLocal(); scheduleSync();
         render();
+        toast('已恢复为正常待取 ✓');
       }
-    } catch(e) {
-      console.error('Parse remote data error:', e);
+      return;
     }
-  } else {
-    currentSha = result.sha;
-  }
-}
-
-// Debounced save
-function debouncedSave() {
-  if (state.config.syncMode === 'local') {
-    saveLocalRecords();
-    setSyncStatus('local');
-    return;
-  }
-  if (!hasCloudConfig()) {
-    saveLocalRecords();
-    setSyncStatus('offline');
-    return;
-  }
-  saveLocalRecords();
-  if (state.saveTimer) clearTimeout(state.saveTimer);
-  state.saveTimer = setTimeout(async function() {
-    await saveGitHubData(state.records, currentSha);
-  }, 1200);
-}
-
-async function manualSync() {
-  if (state.config.syncMode === 'local') {
-    setSyncStatus('local');
-    showToast('当前为本地模式');
-    return;
-  }
-  if (!hasCloudConfig()) {
-    setSyncStatus('offline');
-    openSettings();
-    return;
-  }
-  showToast('正在同步...');
-  await pullFromGitHub();
-  // Also push local changes
-  if (hasCloudConfig()) {
-    await saveGitHubData(state.records, currentSha);
-  }
-  showToast('同步完成', 'success');
-}
-
-// ============ Data Operations ============
-
-function getActiveRecords() {
-  return state.records.filter(function(r) { return !r.deleted; });
-}
-
-function getRecordsForTab(tab) {
-  var active = getActiveRecords();
-  switch(tab) {
-    case 'pending':
-      return active.filter(function(r) { return r.type === 'pickup' && !r.takenAt && !r.errAt; });
-    case 'taken':
-      return active.filter(function(r) { return r.type === 'pickup' && r.takenAt && !r.errAt; });
-    case 'send':
-      return active.filter(function(r) { return r.type === 'send' && !r.errAt; });
-    case 'error':
-      return active.filter(function(r) { return r.errAt; });
-    default:
-      return [];
-  }
-}
-
-function groupByLocation(records) {
-  var groups = {};
-  var order = [];
-  for (var i = 0; i < records.length; i++) {
-    var r = records[i];
-    var loc = r.location || '未分组';
-    if (!groups[loc]) {
-      groups[loc] = [];
-      order.push(loc);
+    // 分组头：展开 / 收起
+    const ghead = e.target.closest('.group-head');
+    if (ghead) {
+      const name = ghead.dataset.group;
+      if (expandedGroups.has(name)) expandedGroups.delete(name);
+      else expandedGroups.add(name);
+      render();
+      return;
     }
-    groups[loc].push(r);
-  }
-  // Sort: '寄件码' first, then by group size desc, then alphabetical
-  order.sort(function(a, b) {
-    if (a === '寄件码' && b !== '寄件码') return -1;
-    if (b === '寄件码' && a !== '寄件码') return 1;
-    if (groups[a].length !== groups[b].length) {
-      return groups[b].length - groups[a].length;
-    }
-    return a.localeCompare(b);
-  });
-  return { groups: groups, order: order };
-}
-
-function findRecord(id) {
-  for (var i = 0; i < state.records.length; i++) {
-    if (state.records[i].id === id) return state.records[i];
-  }
-  return null;
-}
-
-function updateRecord(id, updates) {
-  for (var i = 0; i < state.records.length; i++) {
-    if (state.records[i].id === id) {
-      Object.assign(state.records[i], updates);
-      state.records[i].updatedAt = now();
-      return state.records[i];
-    }
-  }
-  return null;
-}
-
-// ============ Actions ============
-
-function toggleTaken(id) {
-  var r = findRecord(id);
-  if (!r) return;
-  if (r.takenAt) {
-    updateRecord(id, { takenAt: null });
-    showToast('已恢复待取');
-  } else {
-    updateRecord(id, { takenAt: now(), errAt: null });
-    showToast('已标记为已取', 'success');
-  }
-  debouncedSave();
-  render();
-}
-
-function toggleReceived(id) {
-  var r = findRecord(id);
-  if (!r) return;
-  if (r.takenAt) {
-    updateRecord(id, { takenAt: null });
-    showToast('已恢复未收');
-  } else {
-    updateRecord(id, { takenAt: now(), errAt: null });
-    showToast('已标记为已收', 'success');
-  }
-  debouncedSave();
-  render();
-}
-
-function markError(id) {
-  var r = findRecord(id);
-  if (!r) return;
-  if (r.errAt) {
-    updateRecord(id, { errAt: null });
-    showToast('已取消错误标记');
-  } else {
-    updateRecord(id, { errAt: now() });
-    showToast('已标记为错误', 'error');
-  }
-  debouncedSave();
-  render();
-}
-
-function deleteRecord(id) {
-  showConfirm('删除记录', '确定要删除这条记录吗？此操作不可撤销。', function() {
-    updateRecord(id, { deleted: true, deletedAt: now() });
-    debouncedSave();
-    render();
-    showToast('已删除');
-  });
-}
-
-function showBigCode(id) {
-  var r = findRecord(id);
-  if (!r) return;
-  var overlay = document.getElementById('bigCodeOverlay');
-  var labelText = document.getElementById('bigCodeLabel');
-  var codeText = document.getElementById('bigCodeText');
-  var subText = document.getElementById('bigCodeSub');
-  
-  labelText.textContent = r.type === 'send' ? '寄件码' : '取件码';
-  codeText.textContent = formatCode(r.code);
-  var subParts = [];
-  if (r.location) subParts.push(r.location);
-  if (r.recipient) subParts.push(r.recipient);
-  if (r.note) subParts.push(r.note);
-  subText.textContent = subParts.join(' · ');
-  
-  overlay.classList.add('show');
-}
-
-function closeBigCode() {
-  document.getElementById('bigCodeOverlay').classList.remove('show');
-}
-
-// ============ Form ============
-
-function openAddForm() {
-  state.editingId = null;
-  state.formType = 'pickup';
-  state.selectedLocation = '';
-  document.getElementById('formTitle').textContent = '添加取件码';
-  document.getElementById('inputCode').value = '';
-  document.getElementById('inputRecipient').value = '';
-  document.getElementById('inputNote').value = '';
-  setFormType('pickup');
-  renderLocationTags();
-  openSheet('form');
-  setTimeout(function() {
-    document.getElementById('inputCode').focus();
-  }, 350);
-}
-
-function openEditForm(id) {
-  var r = findRecord(id);
-  if (!r) return;
-  state.editingId = id;
-  state.formType = r.type || 'pickup';
-  state.selectedLocation = r.location || '';
-  document.getElementById('formTitle').textContent = '编辑记录';
-  document.getElementById('inputCode').value = formatCode(r.code);
-  document.getElementById('inputRecipient').value = r.recipient || '';
-  document.getElementById('inputNote').value = r.note || '';
-  setFormType(r.type || 'pickup');
-  renderLocationTags();
-  openSheet('form');
-}
-
-function setFormType(type) {
-  state.formType = type;
-  var btns = document.querySelectorAll('.type-switch-btn');
-  for (var i = 0; i < btns.length; i++) {
-    btns[i].classList.remove('active');
-  }
-  var activeBtn = document.querySelector('.type-switch-btn[data-type="' + type + '"]');
-  if (activeBtn) activeBtn.classList.add('active');
-  
-  var codeLabel = document.getElementById('codeLabel');
-  var submitBtn = document.getElementById('formSubmitBtn');
-  var locationGroup = document.getElementById('locationGroup');
-  if (type === 'send') {
-    codeLabel.textContent = '寄件码';
-    submitBtn.classList.remove('btn-primary');
-    submitBtn.classList.add('btn-purple');
-    locationGroup.style.display = 'none';
-  } else {
-    codeLabel.textContent = '取件码';
-    submitBtn.classList.remove('btn-purple');
-    submitBtn.classList.add('btn-primary');
-    locationGroup.style.display = '';
-  }
-}
-
-function renderLocationTags() {
-  var container = document.getElementById('locationTags');
-  container.innerHTML = '';
-  for (var i = 0; i < state.locations.length; i++) {
-    var loc = state.locations[i];
-    var tag = document.createElement('button');
-    tag.className = 'loc-tag';
-    if (loc === '寄件码') tag.classList.add('is-send-tag');
-    if (loc === state.selectedLocation) tag.classList.add('active');
-    tag.textContent = loc;
-    tag.onclick = (function(location) {
-      return function() {
-        state.selectedLocation = location;
-        renderLocationTags();
-      };
-    })(loc);
-    container.appendChild(tag);
-  }
-}
-
-function submitForm() {
-  var codeText = document.getElementById('inputCode').value.trim();
-  var location = state.selectedLocation || '';
-  var recipient = document.getElementById('inputRecipient').value.trim();
-  var note = document.getElementById('inputNote').value.trim();
-  
-  if (!codeText) {
-    showToast('请输入取件码', 'error');
-    return;
-  }
-  
-  var codes = parseMultiLineCodes(codeText);
-  if (codes.length === 0) {
-    showToast('请输入有效的取件码', 'error');
-    return;
-  }
-  
-  if (state.editingId) {
-    // Edit mode - update single record
-    var r = findRecord(state.editingId);
-    if (r) {
-      updateRecord(state.editingId, {
-        code: codes[0],
-        type: state.formType,
-        location: location || (state.formType === 'send' ? '寄件码' : ''),
-        recipient: recipient,
-        note: note
-      });
-      showToast('已更新', 'success');
-    }
-  } else {
-    // Add mode - may be multiple
-    for (var i = 0; i < codes.length; i++) {
-      var newRecord = {
-        id: genId(),
-        code: codes[i],
-        type: state.formType,
-        location: location || (state.formType === 'send' ? '寄件码' : ''),
-        recipient: recipient,
-        note: note,
-        createdAt: now(),
-        takenAt: null,
-        errAt: null,
-        updatedAt: now(),
-        deleted: false,
-        deletedAt: null
-      };
-      state.records.push(newRecord);
-    }
-    if (codes.length > 1) {
-      showToast('已添加 ' + codes.length + ' 条记录', 'success');
-    } else {
-      showToast('已添加', 'success');
-    }
-  }
-  
-  debouncedSave();
-  render();
-  closeSheet('form');
-}
-
-// ============ Location Management ============
-
-function openLocMgmt() {
-  renderLocMgmtList();
-  openSheet('locMgmt');
-}
-
-function renderLocMgmtList() {
-  var list = document.getElementById('locMgmtList');
-  list.innerHTML = '';
-  for (var i = 0; i < state.locations.length; i++) {
-    (function(loc, idx) {
-      var item = document.createElement('div');
-      item.className = 'loc-mgmt-item';
-      var name = document.createElement('span');
-      name.className = 'lmi-name';
-      name.textContent = loc;
-      var del = document.createElement('button');
-      del.className = 'lmi-del';
-      del.textContent = '🗑';
-      del.onclick = function() {
-        showConfirm('删除地点', '确定要删除地点"' + loc + '"吗？', function() {
-          state.locations.splice(idx, 1);
-          saveLocations();
-          renderLocMgmtList();
-          showToast('已删除');
-        });
-      };
-      item.appendChild(name);
-      item.appendChild(del);
-      list.appendChild(item);
-    })(state.locations[i], i);
-  }
-}
-
-function addLocation() {
-  var input = document.getElementById('newLocInput');
-  var name = input.value.trim();
-  if (!name) {
-    showToast('请输入地点名称', 'error');
-    return;
-  }
-  if (state.locations.indexOf(name) >= 0) {
-    showToast('该地点已存在', 'error');
-    return;
-  }
-  state.locations.push(name);
-  saveLocations();
-  input.value = '';
-  renderLocMgmtList();
-  showToast('已添加地点');
-}
-
-// ============ Settings ============
-
-function openSettings() {
-  document.getElementById('cfgToken').value = state.config.token || '';
-  document.getElementById('cfgOwner').value = state.config.owner || '';
-  document.getElementById('cfgRepo').value = state.config.repo || '';
-  document.getElementById('cfgBranch').value = state.config.branch || '';
-  document.getElementById('cfgDataFile').value = state.config.dataFile || '';
-  
-  // Set mode buttons
-  var modeCloud = document.getElementById('modeCloud');
-  var modeLocal = document.getElementById('modeLocal');
-  modeCloud.classList.remove('active');
-  modeLocal.classList.remove('active');
-  if (state.config.syncMode === 'local') {
-    modeLocal.classList.add('active');
-  } else {
-    modeCloud.classList.add('active');
-  }
-  
-  openSheet('settings');
-}
-
-function setSyncMode(mode) {
-  var modeCloud = document.getElementById('modeCloud');
-  var modeLocal = document.getElementById('modeLocal');
-  modeCloud.classList.remove('active');
-  modeLocal.classList.remove('active');
-  if (mode === 'local') {
-    modeLocal.classList.add('active');
-  } else {
-    modeCloud.classList.add('active');
-  }
-  // Don't save here, save when clicking "保存并连接"
-}
-
-function saveSettings() {
-  var token = document.getElementById('cfgToken').value.trim();
-  var owner = document.getElementById('cfgOwner').value.trim() || DEFAULT_CONFIG.owner;
-  var repo = document.getElementById('cfgRepo').value.trim() || DEFAULT_CONFIG.repo;
-  var branch = document.getElementById('cfgBranch').value.trim() || DEFAULT_CONFIG.branch;
-  var dataFile = document.getElementById('cfgDataFile').value.trim() || DEFAULT_CONFIG.dataFile;
-  var syncMode = document.getElementById('modeLocal').classList.contains('active') ? 'local' : 'cloud';
-  
-  state.config.token = token;
-  state.config.owner = owner;
-  state.config.repo = repo;
-  state.config.branch = branch;
-  state.config.dataFile = dataFile;
-  state.config.syncMode = syncMode;
-  
-  saveConfig();
-  closeSheet('settings');
-  
-  if (syncMode === 'local') {
-    setSyncStatus('local');
-    showToast('已切换到本地模式');
-  } else if (token) {
-    showToast('正在连接GitHub...');
-    pullFromGitHub().then(function() {
-      if (state.syncStatus === 'synced') {
-        showToast('已连接GitHub', 'success');
+    const btn = e.target.closest('button');
+    if (!btn) {
+      // 点击卡片主体（单号区域）→ 打开编辑，可修改存放地点等
+      const card = e.target.closest('.card');
+      if (card && card.dataset.card) {
+        const rec = records.find(r => r.id === card.dataset.card && !r.deleted);
+        if (rec) openForm(rec);
       }
-    });
-  } else {
-    setSyncStatus('offline');
-    showToast('请填入Token', 'error');
-  }
-}
-
-// ============ Tools Menu ============
-
-function openToolsMenu() {
-  openSheet('tools');
-}
-
-// ============ Export / Import ============
-
-function exportJSON() {
-  var data = {
-    records: state.records,
-    locations: state.locations,
-    exportTime: now(),
-    version: 1
-  };
-  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'pickup-codes-backup-' + new Date().toISOString().slice(0,10) + '.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('已导出备份', 'success');
-}
-
-function importJSON(event) {
-  var file = event.target.files[0];
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      var data = JSON.parse(e.target.result);
-      if (data.records && Array.isArray(data.records)) {
-        showConfirm('导入数据', '将导入 ' + data.records.length + ' 条记录，与现有数据合并。确定继续吗？', function() {
-          state.records = mergeRecords(state.records, data.records);
-          if (data.locations && Array.isArray(data.locations)) {
-            // Merge locations
-            for (var i = 0; i < data.locations.length; i++) {
-              if (state.locations.indexOf(data.locations[i]) < 0) {
-                state.locations.push(data.locations[i]);
-              }
-            }
-            saveLocations();
-          }
-          debouncedSave();
-          render();
-          showToast('导入成功', 'success');
-        });
-      } else {
-        showToast('文件格式不正确', 'error');
-      }
-    } catch(err) {
-      showToast('解析失败: ' + err.message, 'error');
+      return;
     }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
+    const id = btn.dataset.toggle;
+    const rec = records.find(r => r.id === id && !r.deleted);
+    if (!rec || rec.errAt) return;
 
-function clearCompleted() {
-  var completed = state.records.filter(function(r) {
-    return !r.deleted && (r.takenAt || r.errAt);
+    if (btn.dataset.toggle) {
+      rec.takenAt = rec.takenAt ? null : Date.now();
+      touch(rec);
+      saveLocal(); render(); scheduleSync();
+      const isSend = rec.type === 'send';
+      toast(rec.takenAt
+        ? (isSend ? '已收走 ✓' : '已标记取件 ✓')
+        : (isSend ? '已恢复待收' : '已恢复待取'));
+    }
   });
-  if (completed.length === 0) {
-    showToast('没有已完成的记录');
-    return;
+
+  // 大字取件
+  function showBig(rec) {
+    $('bCompany').textContent = rec.recipient || '取件码';
+    $('bCode').textContent = rec.code;
+    $('bLoc').textContent = rec.location ? '📍 ' + rec.location : '';
+    $('bigMask').classList.add('show');
   }
-  showConfirm('清空已完成', '将清理 ' + completed.length + ' 条已取/已收/错误记录。确定继续吗？', function() {
-    for (var i = 0; i < completed.length; i++) {
-      updateRecord(completed[i].id, { deleted: true, deletedAt: now() });
-    }
-    debouncedSave();
-    render();
-    showToast('已清理 ' + completed.length + ' 条记录', 'success');
+  $('bigMask').addEventListener('click', () => $('bigMask').classList.remove('show'));
+  $('bigClose').addEventListener('click', e => { e.stopPropagation(); $('bigMask').classList.remove('show'); });
+
+  // 确认框按钮
+  $('confirmCancel').addEventListener('click', closeConfirm);
+  $('confirmMask').addEventListener('click', e => { if (e.target === $('confirmMask')) closeConfirm(); });
+  $('confirmOk').addEventListener('click', () => { if (confirmAction) confirmAction(); closeConfirm(); });
+
+  // 工具面板
+  $('btnTools').addEventListener('click', () => {
+    const p = $('toolPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
   });
-}
 
-// ============ Tabs ============
-
-function switchTab(tab) {
-  state.currentTab = tab;
-  var items = document.querySelectorAll('.tab-item');
-  for (var i = 0; i < items.length; i++) {
-    items[i].classList.remove('active');
-  }
-  var activeItem = document.querySelector('.tab-item[data-tab="' + tab + '"]');
-  if (activeItem) activeItem.classList.add('active');
-  render();
-}
-
-// ============ Render ============
-
-function render() {
-  renderStats();
-  renderBadges();
-  renderList();
-}
-
-function renderStats() {
-  var active = getActiveRecords();
-  var pending = active.filter(function(r) {
-    return r.type === 'pickup' && !r.takenAt && !r.errAt;
-  }).length;
-  var send = active.filter(function(r) {
-    return r.type === 'send' && !r.errAt;
-  }).length;
-  document.getElementById('statPending').textContent = pending;
-  document.getElementById('statSend').textContent = send;
-}
-
-function renderBadges() {
-  var active = getActiveRecords();
-  document.getElementById('badgePending').textContent = active.filter(function(r) {
-    return r.type === 'pickup' && !r.takenAt && !r.errAt;
-  }).length;
-  document.getElementById('badgeTaken').textContent = active.filter(function(r) {
-    return r.type === 'pickup' && r.takenAt && !r.errAt;
-  }).length;
-  document.getElementById('badgeSend').textContent = active.filter(function(r) {
-    return r.type === 'send' && !r.errAt;
-  }).length;
-  document.getElementById('badgeError').textContent = active.filter(function(r) {
-    return r.errAt;
-  }).length;
-}
-
-function renderList() {
-  var container = document.getElementById('listContainer');
-  var records = getRecordsForTab(state.currentTab);
-  
-  if (records.length === 0) {
-    var emptyMsg = '';
-    switch(state.currentTab) {
-      case 'pending': emptyMsg = '暂无待取件记录'; break;
-      case 'taken': emptyMsg = '暂无已取记录'; break;
-      case 'send': emptyMsg = '暂无寄件码'; break;
-      case 'error': emptyMsg = '暂无错误记录'; break;
-    }
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">' + emptyMsg + '<br>点击右下角 + 添加</div></div>';
-    return;
-  }
-  
-  var grouped = groupByLocation(records);
-  container.innerHTML = '';
-  
-  for (var gi = 0; gi < grouped.order.length; gi++) {
-    var locName = grouped.order[gi];
-    var groupRecords = grouped.groups[locName];
-    container.appendChild(createLocationGroup(locName, groupRecords));
-  }
-}
-
-function createLocationGroup(locName, records) {
-  var group = document.createElement('div');
-  group.className = 'location-group';
-  // Default collapsed
-  if (state.collapsedGroups[locName] === undefined) {
-    state.collapsedGroups[locName] = true;
-  }
-  if (state.collapsedGroups[locName]) {
-    group.classList.add('collapsed');
-  }
-  
-  // Header
-  var header = document.createElement('div');
-  header.className = 'group-header';
-  header.onclick = function() {
-    group.classList.toggle('collapsed');
-    state.collapsedGroups[locName] = group.classList.contains('collapsed');
-  };
-  
-  var toggle = document.createElement('div');
-  toggle.className = 'group-toggle';
-  toggle.textContent = '▼';
-  
-  var name = document.createElement('div');
-  name.className = 'group-name';
-  name.textContent = locName;
-  
-  var count = document.createElement('div');
-  count.className = 'group-count';
-  count.textContent = records.length;
-  
-  header.appendChild(toggle);
-  header.appendChild(name);
-  header.appendChild(count);
-  group.appendChild(header);
-  
-  // Body
-  var body = document.createElement('div');
-  body.className = 'group-body';
-  
-  for (var i = 0; i < records.length; i++) {
-    body.appendChild(createRecordCard(records[i]));
-  }
-  
-  // Set max-height for animation
-  if (!state.collapsedGroups[locName]) {
-    body.style.maxHeight = '9999px';
-  }
-  
-  group.appendChild(body);
-  return group;
-}
-
-function createRecordCard(record) {
-  var card = document.createElement('div');
-  card.className = 'record-card';
-  card.dataset.id = record.id;
-  
-  if (record.type === 'send') card.classList.add('is-send');
-  if (record.errAt) card.classList.add('is-error');
-  if (record.takenAt) card.classList.add('is-taken');
-  
-  // Status tag
-  var status = document.createElement('div');
-  status.className = 'card-status';
-  if (record.errAt) {
-    status.classList.add('st-error');
-    status.textContent = '错误';
-  } else if (record.type === 'send') {
-    status.classList.add('st-send');
-    status.textContent = record.takenAt ? '已收' : '寄件';
-  } else if (record.takenAt) {
-    status.classList.add('st-taken');
-    status.textContent = '已取';
-  } else {
-    status.classList.add('st-pending');
-    status.textContent = '待取';
-  }
-  card.appendChild(status);
-  
-  // Main content
-  var main = document.createElement('div');
-  main.className = 'card-main';
-  
-  var code = document.createElement('div');
-  code.className = 'card-code';
-  if (record.type === 'send') code.classList.add('is-send');
-  code.textContent = formatCode(record.code);
-  main.appendChild(code);
-  
-  // Sub info
-  var sub = document.createElement('div');
-  sub.className = 'card-sub';
-  var subParts = [];
-  if (record.recipient) {
-    var rec = document.createElement('span');
-    rec.className = 'sub-recipient';
-    rec.textContent = record.recipient;
-    sub.appendChild(rec);
-  }
-  if (record.note) {
-    if (record.recipient) {
-      var dot = document.createElement('span');
-      dot.className = 'sub-dot';
-      dot.textContent = '·';
-      sub.appendChild(dot);
-    }
-    var noteSpan = document.createElement('span');
-    noteSpan.className = 'sub-note';
-    noteSpan.textContent = record.note;
-    sub.appendChild(noteSpan);
-  }
-  if (!record.recipient && !record.note) {
-    var emptySub = document.createElement('span');
-    emptySub.className = 'sub-note';
-    emptySub.textContent = record.location || '';
-    sub.appendChild(emptySub);
-  }
-  main.appendChild(sub);
-  card.appendChild(main);
-  
-  // Actions
-  var actions = document.createElement('div');
-  actions.className = 'card-actions';
-  
-  var btn = document.createElement('button');
-  btn.className = 'card-btn';
-  if (record.type === 'send') {
-    if (record.takenAt) {
-      btn.classList.add('btn-received');
-      btn.textContent = '已收';
-    } else {
-      btn.classList.add('btn-receive');
-      btn.textContent = '已收';
-    }
-    btn.onclick = function(e) {
-      e.stopPropagation();
-      toggleReceived(record.id);
-    };
-  } else {
-    if (record.takenAt) {
-      btn.classList.add('btn-taken');
-      btn.textContent = '已取';
-    } else if (record.errAt) {
-      btn.classList.add('btn-restore');
-      btn.textContent = '恢复';
-    } else {
-      btn.classList.add('btn-take');
-      btn.textContent = '已取';
-    }
-    btn.onclick = function(e) {
-      e.stopPropagation();
-      if (record.errAt) {
-        markError(record.id);
-      } else {
-        toggleTaken(record.id);
-      }
-    };
-  }
-  actions.appendChild(btn);
-  card.appendChild(actions);
-  
-  // Click to edit
-  card.onclick = function(e) {
-    if (e.target.closest('.card-btn')) return;
-    openEditForm(record.id);
-  };
-  
-  // Long press
-  attachLongPress(card, record);
-  
-  return card;
-}
-
-// ============ Long Press ============
-
-function attachLongPress(element, record) {
-  var timer = null;
-  var isLongPress = false;
-  
-  function startPress(e) {
-    isLongPress = false;
-    // Use touch or mouse
-    timer = setTimeout(function() {
-      isLongPress = true;
-      openActionMenu(record.id);
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 600);
-  }
-  
-  function cancelPress() {
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-    }
-  }
-  
-  element.addEventListener('touchstart', startPress, { passive: true });
-  element.addEventListener('touchend', cancelPress);
-  element.addEventListener('touchmove', cancelPress);
-  element.addEventListener('touchcancel', cancelPress);
-  
-  element.addEventListener('mousedown', startPress);
-  element.addEventListener('mouseup', cancelPress);
-  element.addEventListener('mouseleave', cancelPress);
-  
-  // Prevent context menu on long press
-  element.addEventListener('contextmenu', function(e) {
-    e.preventDefault();
-    openActionMenu(record.id);
-    return false;
+  // 导出（仅有效记录，不含墓碑）
+  $('btnExport').addEventListener('click', () => {
+    const vis = visRecords();
+    if (!vis.length) { toast('还没有记录可导出'); return; }
+    const blob = new Blob([JSON.stringify(vis, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    a.download = `取件码备份_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('备份文件已生成 📤');
   });
-}
 
-function openActionMenu(id) {
-  var r = findRecord(id);
-  if (!r) return;
-  var body = document.getElementById('actionMenuBody');
-  body.innerHTML = '';
-  
-  // Show big code
-  var bigCodeBtn = document.createElement('button');
-  bigCodeBtn.className = 'action-menu-item';
-  bigCodeBtn.innerHTML = '<span class="ami-icon">🔍</span><span>大字显示取件码</span>';
-  bigCodeBtn.onclick = function() {
-    closeSheet('action');
-    showBigCode(id);
-  };
-  body.appendChild(bigCodeBtn);
-  
-  // Edit
-  var editBtn = document.createElement('button');
-  editBtn.className = 'action-menu-item';
-  editBtn.innerHTML = '<span class="ami-icon">✏️</span><span>编辑记录</span>';
-  editBtn.onclick = function() {
-    closeSheet('action');
-    openEditForm(id);
-  };
-  body.appendChild(editBtn);
-  
-  // Mark error / restore
-  var errBtn = document.createElement('button');
-  errBtn.className = 'action-menu-item';
-  if (r.errAt) {
-    errBtn.innerHTML = '<span class="ami-icon">✅</span><span>取消错误标记</span>';
-  } else {
-    errBtn.innerHTML = '<span class="ami-icon">⚠️</span><span>标记为错误</span>';
-  }
-  errBtn.onclick = function() {
-    closeSheet('action');
-    markError(id);
-  };
-  body.appendChild(errBtn);
-  
-  // Toggle status
-  var toggleBtn = document.createElement('button');
-  toggleBtn.className = 'action-menu-item';
-  if (r.type === 'send') {
-    if (r.takenAt) {
-      toggleBtn.innerHTML = '<span class="ami-icon">↩️</span><span>恢复未收</span>';
-    } else {
-      toggleBtn.innerHTML = '<span class="ami-icon">📦</span><span>标记已收</span>';
-    }
-    toggleBtn.onclick = function() {
-      closeSheet('action');
-      toggleReceived(id);
-    };
-  } else {
-    if (r.takenAt) {
-      toggleBtn.innerHTML = '<span class="ami-icon">↩️</span><span>恢复待取</span>';
-    } else {
-      toggleBtn.innerHTML = '<span class="ami-icon">📦</span><span>标记已取</span>';
-    }
-    toggleBtn.onclick = function() {
-      closeSheet('action');
-      toggleTaken(id);
-    };
-  }
-  body.appendChild(toggleBtn);
-  
-  // Delete
-  var delBtn = document.createElement('button');
-  delBtn.className = 'action-menu-item danger';
-  delBtn.innerHTML = '<span class="ami-icon">🗑</span><span>删除记录</span>';
-  delBtn.onclick = function() {
-    closeSheet('action');
-    deleteRecord(id);
-  };
-  body.appendChild(delBtn);
-  
-  openSheet('action');
-}
-
-// ============ Sheet Management ============
-
-function openSheet(name) {
-  var overlayId = 'overlay' + name.charAt(0).toUpperCase() + name.slice(1);
-  var sheetId = 'sheet' + name.charAt(0).toUpperCase() + name.slice(1);
-  var overlay = document.getElementById(overlayId);
-  var sheet = document.getElementById(sheetId);
-  if (!overlay || !sheet) return;
-  overlay.classList.add('show');
-  sheet.classList.add('show');
-}
-
-function closeSheet(name) {
-  var overlayId = 'overlay' + name.charAt(0).toUpperCase() + name.slice(1);
-  var sheetId = 'sheet' + name.charAt(0).toUpperCase() + name.slice(1);
-  var overlay = document.getElementById(overlayId);
-  var sheet = document.getElementById(sheetId);
-  if (!overlay || !sheet) return;
-  overlay.classList.remove('show');
-  sheet.classList.remove('show');
-}
-
-// ============ Confirm Dialog ============
-
-var confirmCallback = null;
-
-function showConfirm(title, msg, callback) {
-  document.getElementById('confirmTitle').textContent = title;
-  document.getElementById('confirmMsg').textContent = msg;
-  confirmCallback = callback;
-  document.getElementById('overlayConfirm').classList.add('show');
-  document.getElementById('confirmDialog').classList.add('show');
-  
-  var okBtn = document.getElementById('confirmOkBtn');
-  okBtn.onclick = function() {
-    document.getElementById('overlayConfirm').classList.remove('show');
-    document.getElementById('confirmDialog').classList.remove('show');
-    if (confirmCallback) {
-      var cb = confirmCallback;
-      confirmCallback = null;
-      cb();
-    }
-  };
-  
-  // Reset button class
-  okBtn.className = 'btn btn-primary';
-  // If the confirm is for delete, make it danger
-  if (title.indexOf('删除') >= 0 || title.indexOf('清空') >= 0) {
-    okBtn.className = 'btn btn-danger';
-  }
-}
-
-function cancelConfirm() {
-  document.getElementById('overlayConfirm').classList.remove('show');
-  document.getElementById('confirmDialog').classList.remove('show');
-  confirmCallback = null;
-}
-
-// ============ Toast ============
-
-var toastTimer = null;
-
-function showToast(msg, type) {
-  var toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.className = 'toast';
-  if (type === 'error') toast.classList.add('toast-error');
-  if (type === 'success') toast.classList.add('toast-success');
-  
-  // Force reflow
-  void toast.offsetHeight;
-  
-  toast.classList.add('show');
-  
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(function() {
-    toast.classList.remove('show');
-  }, 2500);
-}
-
-// ============ Input Formatting ============
-
-document.addEventListener('DOMContentLoaded', function() {
-  var codeInput = document.getElementById('inputCode');
-  
-  codeInput.addEventListener('input', function(e) {
-    // For each line, only auto-add dash after 4 chars
-    var lines = e.target.value.split('\n');
-    var formattedLines = [];
-    for (var i = 0; i < lines.length; i++) {
-      var line = lines[i];
-      // If line has more than 4 chars and no dash, insert dash after 4th
-      if (line.length > 4 && line.indexOf('-') === -1) {
-        formattedLines.push(line.slice(0, 4) + '-' + line.slice(4));
-      } else {
-        formattedLines.push(line);
-      }
-    }
-    
-    var newVal = formattedLines.join('\n');
-    if (newVal !== e.target.value) {
-      var start = e.target.selectionStart;
-      var end = e.target.selectionEnd;
-      e.target.value = newVal;
-      // Try to restore cursor position
+  // 导入（记录级合并）
+  $('btnImport').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
       try {
-        e.target.setSelectionRange(start, end);
-      } catch(err) {}
-    }
+        const data = JSON.parse(reader.result);
+        if (!Array.isArray(data)) throw 0;
+        const valid = data.filter(x => x && x.code).map(x => ({
+          ...x, id: x.id || uid(), updatedAt: x.updatedAt || Date.now()
+        }));
+        if (!valid.length) throw 0;
+        confirmAsk(`导入 ${valid.length} 条记录？将与现有记录合并`, '导入', true, () => {
+          records = mergeRecords(records, valid);
+          saveLocal(); render(); scheduleSync();
+          toast('导入完成，已同步到云端 ✓');
+        });
+      } catch (err) { toast('文件格式不对，导入失败'); }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
   });
-  
-  // Prevent body scroll when sheet is open
-  var sheets = document.querySelectorAll('.bottom-sheet');
-  for (var i = 0; i < sheets.length; i++) {
-    sheets[i].addEventListener('touchmove', function(e) {
-      // Allow scrolling inside sheet body
-      if (e.target.closest('.sheet-body')) return;
-      e.preventDefault();
-    }, { passive: false });
-  }
-  
-  // Close sheets on Escape
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      closeBigCode();
-      cancelConfirm();
-      closeSheet('form');
-      closeSheet('locMgmt');
-      closeSheet('action');
-      closeSheet('tools');
-      closeSheet('settings');
-    }
+
+  // 清空已完成（含已取件+已收走的寄件码，墓碑化并同步到其他设备）
+  $('btnClearDone').addEventListener('click', () => {
+    const doneList = visRecords().filter(r => r.takenAt);
+    if (!doneList.length) { toast('没有已完成的记录'); return; }
+    confirmAsk(`清空 ${doneList.length} 条已完成记录？清空后无法恢复`, '清空', false, () => {
+      const now = Date.now();
+      const doneIds = new Set(doneList.map(r => r.id));
+      records = records.map(r => doneIds.has(r.id)
+        ? { id: r.id, deleted: true, deletedAt: now, updatedAt: now }
+        : r);
+      saveLocal(); render(); scheduleSync();
+      toast('已清空已完成记录 🧹');
+    });
   });
-  
-  // Init
-  init();
-});
 
-// ============ Init ============
+  // 同步胶囊：点击手动同步
+  $('syncChip').addEventListener('click', () => {
+    if (!ghConfig.token || ghConfig.mode === 'local') { toast('本地模式：数据仅保存在本机浏览器，点击 ☁️ 云同步设置 配置 GitHub'); return; }
+    syncNow(true);
+  });
 
-async function init() {
-  loadConfig();
-  loadLocations();
-  loadLocalRecords();
-  
-  // Set sync status
-  if (state.config.syncMode === 'local') {
+  // GitHub 设置
+  $('btnSettings').addEventListener('click', () => {
+    $('ghToken').value = ghConfig.token || '';
+    $('ghOwner').value = ghConfig.owner || '';
+    $('ghRepo').value = ghConfig.repo || '';
+    $('ghBranch').value = ghConfig.branch || '';
+    $('ghDataFile').value = ghConfig.dataFile || '';
+    document.getElementById('modeCloud').classList.toggle('active', ghConfig.mode !== 'local');
+    document.getElementById('modeLocal').classList.toggle('active', ghConfig.mode === 'local');
+    $('ghMask').classList.add('show');
+  });
+  $('ghClose').addEventListener('click', () => $('ghMask').classList.remove('show'));
+  $('ghMask').addEventListener('click', e => { if (e.target === $('ghMask')) $('ghMask').classList.remove('show'); });
+  document.getElementById('modeCloud').addEventListener('click', () => {
+    ghConfig.mode = 'cloud'; saveGHConfig();
+    document.getElementById('modeCloud').classList.add('active');
+    document.getElementById('modeLocal').classList.remove('active');
+  });
+  document.getElementById('modeLocal').addEventListener('click', () => {
+    ghConfig.mode = 'local'; saveGHConfig();
+    document.getElementById('modeLocal').classList.add('active');
+    document.getElementById('modeCloud').classList.remove('active');
     setSyncStatus('local');
-  } else if (!hasCloudConfig()) {
-    setSyncStatus('offline');
-  }
-  
-  render();
-  
-  // If cloud mode and has token, pull
-  if (state.config.syncMode !== 'local' && hasCloudConfig()) {
-    await pullFromGitHub();
-    render();
-  } else if (state.config.syncMode !== 'local' && !hasCloudConfig()) {
-    // First time - open settings
-    setTimeout(function() {
-      openSettings();
-    }, 500);
-  }
-}
+  });
+  $('ghSave').addEventListener('click', () => {
+    ghConfig.token = $('ghToken').value.trim();
+    ghConfig.owner = $('ghOwner').value.trim() || 'xwfpl';
+    ghConfig.repo = $('ghRepo').value.trim() || 'xwfpl.github.io';
+    ghConfig.branch = $('ghBranch').value.trim() || 'main';
+    ghConfig.dataFile = $('ghDataFile').value.trim() || 'pickup-data.json';
+    saveGHConfig();
+    $('ghMask').classList.remove('show');
+    toast('配置已保存，正在连接…');
+    syncNow(true);
+  });
 
+  // 手动同步按钮
+  $('btnSync').addEventListener('click', () => {
+    if (!ghConfig.token || ghConfig.mode === 'local') { toast('请先配置 GitHub 云同步'); return; }
+    syncNow(true);
+  });
+
+  /* ================= 初始化 ================= */
+  renderLocTags();
+  render();
+  if (ghConfig.token && ghConfig.mode !== 'local') {
+    setSyncStatus('busy');
+    syncNow(false);
+    setInterval(() => { syncNow(false); }, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { syncNow(false); } });
+    window.addEventListener('online', () => { syncNow(false); });
+  } else {
+    setSyncStatus('local');
+  }
+})();
 </script>
 </body>
 </html>
