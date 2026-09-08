@@ -811,9 +811,11 @@ input, textarea { font-family: inherit; }
     </div>
 
     <div class="form-group" id="locationGroup">
-      <label class="form-label">地点</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <label class="form-label">地点</label>
+        <button class="loc-setting-btn" onclick="closeSheet('form'); setTimeout(function(){openLocMgmt();}, 300);" style="background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:3px;">⚙️ 设置</button>
+      </div>
       <div class="location-tags" id="locationTags"></div>
-      <input type="text" class="input-field" id="inputLocation" placeholder="自定义地点" style="margin-top:8px;">
     </div>
 
     <div class="form-group">
@@ -1008,15 +1010,14 @@ function base64ToUtf8(b64) {
 // Format 8-digit code to 1111-1111
 function formatCode(code) {
   if (!code) return '';
-  var digits = String(code).replace(/\D/g, '');
-  if (digits.length <= 4) return digits;
-  if (digits.length <= 8) return digits.slice(0,4) + '-' + digits.slice(4);
-  // More than 8 digits (for send codes etc.)
-  var parts = [];
-  for (var i = 0; i < digits.length; i += 4) {
-    parts.push(digits.slice(i, i+4));
+  var s = String(code);
+  // If already has a dash, return as-is
+  if (s.indexOf('-') !== -1) return s;
+  // If length > 4 and no dash, insert dash after 4th char
+  if (s.length > 4) {
+    return s.slice(0, 4) + '-' + s.slice(4);
   }
-  return parts.join('-');
+  return s;
 }
 
 // Parse multi-line input into individual codes
@@ -1462,7 +1463,6 @@ function openAddForm() {
   state.selectedLocation = '';
   document.getElementById('formTitle').textContent = '添加取件码';
   document.getElementById('inputCode').value = '';
-  document.getElementById('inputLocation').value = '';
   document.getElementById('inputRecipient').value = '';
   document.getElementById('inputNote').value = '';
   setFormType('pickup');
@@ -1481,7 +1481,6 @@ function openEditForm(id) {
   state.selectedLocation = r.location || '';
   document.getElementById('formTitle').textContent = '编辑记录';
   document.getElementById('inputCode').value = formatCode(r.code);
-  document.getElementById('inputLocation').value = r.location || '';
   document.getElementById('inputRecipient').value = r.recipient || '';
   document.getElementById('inputNote').value = r.note || '';
   setFormType(r.type || 'pickup');
@@ -1527,7 +1526,6 @@ function renderLocationTags() {
     tag.onclick = (function(location) {
       return function() {
         state.selectedLocation = location;
-        document.getElementById('inputLocation').value = location;
         renderLocationTags();
       };
     })(loc);
@@ -1537,7 +1535,7 @@ function renderLocationTags() {
 
 function submitForm() {
   var codeText = document.getElementById('inputCode').value.trim();
-  var location = document.getElementById('inputLocation').value.trim();
+  var location = state.selectedLocation || '';
   var recipient = document.getElementById('inputRecipient').value.trim();
   var note = document.getElementById('inputNote').value.trim();
   
@@ -2252,28 +2250,16 @@ document.addEventListener('DOMContentLoaded', function() {
   var codeInput = document.getElementById('inputCode');
   
   codeInput.addEventListener('input', function(e) {
-    // For each line, format the digits
+    // For each line, only auto-add dash after 4 chars
     var lines = e.target.value.split('\n');
     var formattedLines = [];
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
-      var digits = line.replace(/\D/g, '');
-      if (digits.length === 0) {
-        formattedLines.push(line);
-      } else if (digits.length <= 8) {
-        // Auto-add dash after 4 digits for pickup codes
-        if (digits.length > 4) {
-          formattedLines.push(digits.slice(0,4) + '-' + digits.slice(4));
-        } else {
-          formattedLines.push(digits);
-        }
+      // If line has more than 4 chars and no dash, insert dash after 4th
+      if (line.length > 4 && line.indexOf('-') === -1) {
+        formattedLines.push(line.slice(0, 4) + '-' + line.slice(4));
       } else {
-        // Long codes - format in groups of 4
-        var parts = [];
-        for (var j = 0; j < digits.length; j += 4) {
-          parts.push(digits.slice(j, j+4));
-        }
-        formattedLines.push(parts.join('-'));
+        formattedLines.push(line);
       }
     }
     
