@@ -663,7 +663,8 @@
     return v;
   }
   /* 输入即时格式化：打满4位自动补一个 "-"（1234- → 1234-5678）。
-     纯数字行每4位加一杠；超过8位（长单号）自动退回裸数字，带字母的行一概不动。 */
+     纯数字行每4位加一杠；超过8位（长单号）自动退回裸数字，带字母的行一概不动。
+     如果用户手动输入了横杠（如3-1534），则保持原样不自动格式化。 */
   let fmtTimer = null;
   function dashGroup(d, tail) {                       // 每4位一组；tail=true 时给未满组的末尾加提示杠
     if (!d) return '';
@@ -681,6 +682,8 @@
       const idx = before.split('\n').length - 1;
       const lines = el.value.split('\n');
       const line = lines[idx];
+      // 如果行中已有横杠（用户手动输入），不自动格式化
+      if (line.indexOf('-') !== -1) return;
       const inLine = before.split('\n').pop().length;
       const digitsBefore = line.slice(0, inLine).replace(/-/g, '').length;
       const digits = line.replace(/-/g, '');
@@ -698,6 +701,8 @@
       const lines = el.value.split('\n');
       let changed = false;
       for (let i = 0; i < lines.length; i++) {
+        // 如果行中已有横杠（用户手动输入），保持原样
+        if (lines[i].indexOf('-') !== -1) continue;
         const d = lines[i].replace(/-/g, '');
         if (d && /^\d+$/.test(d) && d.length <= 8) {
           const g = dashGroup(d, false);
@@ -1226,8 +1231,17 @@
   function parseCodes(raw) {
     const out = [];
     String(raw).split(/\r?\n|;/).forEach(seg => {
-      const c = formatCode(seg.trim().replace(/-+$/g, ''));   // 去掉末尾未闭合的提示横杠
-      if (c) out.push(c);
+      let s = seg.trim();
+      // 只去掉末尾的悬空横杠（自动补的提示杠），保留中间手动输入的横杠
+      s = s.replace(/-+$/g, '');
+      if (s) {
+        // 如果已有横杠，保持原样；否则用 formatCode 格式化纯数字
+        if (s.indexOf('-') === -1) {
+          out.push(formatCode(s));
+        } else {
+          out.push(s);
+        }
+      }
     });
     return out;
   }
