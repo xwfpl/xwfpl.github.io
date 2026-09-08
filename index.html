@@ -895,32 +895,27 @@
 
   async function apiGet() {
     var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
-    var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 15000);
-    if (res.status === 404) return { records: [], places: [] };
+    var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 8000);
+    if (res.status === 404) return { records: [], places: [], _sha: null };
     if (!res.ok) throw new Error('GET failed: ' + res.status);
     var data = await res.json();
     var raw = data.content ? data.content.replace(/\n/g, '') : '';
     var content = raw ? base64ToUtf8(raw) : '{}';
     var parsed = JSON.parse(content);
-    return { records: parsed.records || [], places: parsed.places || [] };
+    return { records: parsed.records || [], places: parsed.places || [], _sha: data.sha };
   }
-  async function apiPost(recs) {
+  async function apiPost(recs, sha) {
     var jsonStr = JSON.stringify({ records: recs, places: places });
     var content = utf8ToBase64(jsonStr);
-    // Get current file sha for update
-    var sha = null;
-    try {
-      var checkUrl = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
-      var check = await fetchWithTimeout(checkUrl, { headers: ghHeaders(), cache: 'no-store' }, 10000);
-      if (check.ok) { var d = await check.json(); sha = d.sha; }
-    } catch (e) {}
     var putUrl = ghApiBase() + '/contents/' + ghConfig.dataFile;
-    var body = JSON.stringify({ message: 'sync pickup codes', content: content, sha: sha, branch: ghConfig.branch });
+    var bodyObj = { message: 'sync pickup codes', content: content, branch: ghConfig.branch };
+    if (sha) bodyObj.sha = sha;
+    var body = JSON.stringify(bodyObj);
     var res = await fetchWithTimeout(putUrl, {
       method: 'PUT',
       headers: Object.assign(ghHeaders(), { 'Content-Type': 'application/json' }),
       body: body
-    }, 15000);
+    }, 8000);
     if (!res.ok) {
       var errText = '';
       try { var errData = await res.json(); errText = errData.message || ''; } catch(e2) {}
@@ -957,7 +952,7 @@
       if (sig(merged) !== sig(records)) {
         records = merged; saveLocal(); render();
       }
-      await apiPost(merged);
+      await apiPost(merged, cloud._sha);
       setSyncStatus('ok');
       syncFails = 0; lastSyncOK = Date.now();
       if (syncRetryTimer) { clearTimeout(syncRetryTimer); syncRetryTimer = null; }
