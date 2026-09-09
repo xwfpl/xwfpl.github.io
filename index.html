@@ -716,7 +716,9 @@
   /* ================= 地点标签（可管理，云端同步） ================= */
   const DEFAULT_PLACES = ['富乐新苑正门', '富乐新苑C栋', '凯乐花园', '榕苑3座', '榕苑门口', '阳明花园', '一景大厦'];
   const PLACES_KEY = 'pickup_places_v1';
+  const DEL_PLACES_KEY = 'pickup_del_places_v1';
   let places = loadPlaces();
+  let deletedPlaces = loadDeletedPlaces();
   let editingPlaceIdx = null;
 
   function loadPlaces() {
@@ -726,7 +728,38 @@
     } catch (e) {}
     return DEFAULT_PLACES.slice();
   }
-  function savePlacesLocal() { localStorage.setItem(PLACES_KEY, JSON.stringify(places)); }
+  function loadDeletedPlaces() {
+    try {
+      const a = JSON.parse(localStorage.getItem(DEL_PLACES_KEY));
+      if (Array.isArray(a)) return a;
+    } catch (e) {}
+    return [];
+  }
+  function savePlacesLocal() {
+    localStorage.setItem(PLACES_KEY, JSON.stringify(places));
+    localStorage.setItem(DEL_PLACES_KEY, JSON.stringify(deletedPlaces));
+  }
+
+  /* 地点合并：取并集，但排除被墓碑标记删除的地点 */
+  function mergePlaces(localPlaces, cloudPlaces, localDel, cloudDel) {
+    var delMap = {};
+    (localDel || []).forEach(function(d) {
+      if (d && d.name) delMap[d.name] = Math.max(delMap[d.name] || 0, d.deletedAt || 0);
+    });
+    (cloudDel || []).forEach(function(d) {
+      if (d && d.name) delMap[d.name] = Math.max(delMap[d.name] || 0, d.deletedAt || 0);
+    });
+    var all = {};
+    localPlaces.forEach(function(p) { all[p] = true; });
+    (cloudPlaces || []).forEach(function(p) { all[p] = true; });
+    var merged = Object.keys(all).filter(function(p) { return !delMap[p]; });
+    // 清理7天前的墓碑
+    var cutoff = Date.now() - 7 * 864e5;
+    var mergedDel = Object.keys(delMap).map(function(name) {
+      return { name: name, deletedAt: delMap[name] };
+    }).filter(function(d) { return d.deletedAt >= cutoff; });
+    return { places: merged, deletedPlaces: mergedDel };
+  }
   function renderLocTags() {
     $('locTags').innerHTML = places.map(p =>
       `<button class="quick-tag" data-loc="${esc(p)}" type="button">${esc(p)}</button>`).join('');
@@ -773,6 +806,12 @@
     if (nv && nv !== oldName) {
       if (places.includes(nv)) { toast('已有同名地点'); return; }
       places[editingPlaceIdx] = nv;
+      // 旧名字标记为墓碑，防止其他设备同步时恢复
+      if (!deletedPlaces.find(d => d.name === oldName)) {
+        deletedPlaces.push({ name: oldName, deletedAt: Date.now() });
+      }
+      // 如果新名字之前被删除过，从墓碑中移除
+      deletedPlaces = deletedPlaces.filter(d => d.name !== nv);
       // 已有记录的地点一并迁移到新名字
       let moved = 0;
       records.forEach(r => { if (r.location === oldName) { r.location = nv; touch(r); moved++; } });
@@ -897,16 +936,16 @@
   async function apiGet() {
     var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
     var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 8000);
-    if (res.status === 404) return { records: [], places: [], _sha: null };
+    if (res.status === 404) return { records: [], places: [], deletedPlaces: [], _sha: null };
     if (!res.ok) throw new Error('GET failed: ' + res.status);
     var data = await res.json();
     var raw = data.content ? data.content.replace(/\n/g, '') : '';
     var content = raw ? base64ToUtf8(raw) : '{}';
     var parsed = JSON.parse(content);
-    return { records: parsed.records || [], places: parsed.places || [], _sha: data.sha };
+    return { records: parsed.records || [], places: parsed.places || [], deletedPlaces: parsed.deletedPlaces || [], _sha: data.sha };
   }
   async function apiPost(recs, sha) {
-    var jsonStr = JSON.stringify({ records: recs, places: places });
+    var jsonStr = JSON.stringify({ records: recs, places: places, deletedPlaces: deletedPlaces });
     var content = utf8ToBase64(jsonStr);
     var putUrl = ghApiBase() + '/contents/' + ghConfig.dataFile;
     var bodyObj = { message: 'sync pickup codes', content: content, branch: ghConfig.branch };
@@ -943,15 +982,33 @@
     syncing = true; setSyncStatus('busy');
     try {
       var cloud = await apiGet();
-      // Places: local is always the authority. Never add back deleted places from cloud.
-      // Just download cloud records, but keep local places as-is.
+      // 合并记录
       var merged = mergeRecords(records, cloud.records || []);
       var sig = function(arr) { return JSON.stringify(arr.slice().sort(function(a, b) { return a.id < b.id ? -1 : 1; })); };
       if (sig(merged) !== sig(records)) {
         records = merged; saveLocal(); render();
       }
-      // Only upload if data actually changed (records or places)
-      var needUpload = sig(merged) !== sig(cloud.records || []) || JSON.stringify(places) !== JSON.stringify(cloud.places || []);
+      // 合并地点（墓碑机制：删除的地点不会从云端恢复）
+      // 版本化标记：v2 修正了之前错误的过渡逻辑（之前会把云端独有的地点标记为删除）
+      // v2：首次同步直接取并集，不创建墓碑；之后删除才记墓碑
+      if (localStorage.getItem('pickup_tomb_init') !== 'v2') {
+        // 清除旧版本可能创建的错误墓碑
+        deletedPlaces = [];
+        localStorage.removeItem(DEL_PLACES_KEY);
+        localStorage.setItem('pickup_tomb_init', 'v2');
+      }
+      var pm = mergePlaces(places, cloud.places || [], deletedPlaces, cloud.deletedPlaces || []);
+      var placesChanged = JSON.stringify(pm.places.slice().sort()) !== JSON.stringify(places.slice().sort());
+      var delChanged = JSON.stringify(pm.deletedPlaces) !== JSON.stringify(deletedPlaces);
+      if (placesChanged || delChanged) {
+        places = pm.places;
+        deletedPlaces = pm.deletedPlaces;
+        savePlacesLocal(); renderLocTags(); renderPlacesList();
+      }
+      // 判断是否需要上传
+      var needUpload = sig(merged) !== sig(cloud.records || [])
+        || JSON.stringify(places) !== JSON.stringify(cloud.places || [])
+        || JSON.stringify(deletedPlaces) !== JSON.stringify(cloud.deletedPlaces || []);
       if (needUpload) {
         await apiPost(merged, cloud._sha);
       }
@@ -1361,6 +1418,8 @@
     if (!v) return;
     if (places.includes(v)) { toast('这个地点已存在'); return; }
     places.push(v);
+    // 如果该地点之前被删除过，从墓碑中移除（允许重新添加）
+    deletedPlaces = deletedPlaces.filter(d => d.name !== v);
     $('inNewPlace').value = '';
     pushPlaces(); renderPlacesList();
     toast('已添加：' + v);
@@ -1377,6 +1436,10 @@
     if (delBtn) {
       const name = delBtn.dataset.pdel;
       places = places.filter(p => p !== name);
+      // 记录墓碑，防止其他设备同步时恢复已删除的地点
+      if (!deletedPlaces.find(d => d.name === name)) {
+        deletedPlaces.push({ name: name, deletedAt: Date.now() });
+      }
       pushPlaces(); renderPlacesList();
       toast('已删除：' + name);
     }
