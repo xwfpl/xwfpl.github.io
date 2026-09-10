@@ -1326,7 +1326,26 @@
       saveLocal(); closeForm(); render(); scheduleSync();
       return;
     }
-    // —— 新增：一次录入多条 ——
+    // —— 检查重复取件码 ——
+    const activeRecords = records.filter(r => !r.deleted);
+    const dupList = [];
+    codes.forEach(code => {
+      const found = activeRecords.find(r => r.code === code && r.type === (isSend ? 'send' : undefined));
+      if (found) dupList.push(code);
+    });
+    if (dupList.length > 0) {
+      const msg = dupList.length === 1
+        ? '取件码 ' + dupList[0] + ' 已存在，还要添加吗？'
+        : '有 ' + dupList.length + ' 个取件码已存在（' + dupList.slice(0, 3).join('、') + (dupList.length > 3 ? '…' : '') + '），还要继续添加吗？';
+      confirmAsk(msg, '仍然添加', false, function() {
+        doSaveCodes(codes, data, isSend);
+      });
+      return;
+    }
+    doSaveCodes(codes, data, isSend);
+  }
+
+  function doSaveCodes(codes, data, isSend) {
     const now = Date.now();
     codes.forEach(code => {
       const rec = Object.assign(
