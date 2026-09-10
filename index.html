@@ -552,9 +552,10 @@
       <div class="quick-tags" id="locTags"></div>
       <input type="text" id="inLocation" placeholder="其他地点可手动输入…" autocomplete="off">
     </div>
-    <div class="field">
-      <label id="recipientLabel">收件人</label>
-      <input type="text" id="inRecipient" placeholder="" autocomplete="off">
+    <div class="field" id="fieldRecipient">
+      <label class="loc-label"><span id="recipientLabel">收件人</span><button class="loc-manage" id="btnRecipients" type="button">⚙️ 管理</button></label>
+      <div class="quick-tags" id="recipientTags"></div>
+      <input type="text" id="inRecipient" placeholder="其他收件人可手动输入…" autocomplete="off">
     </div>
     <div class="field" id="fieldNote" style="display:none">
       <label>备注</label>
@@ -586,6 +587,22 @@
       <button id="btnAddPlace" type="button">添加</button>
     </div>
     <div class="p-tip">✎ 改名 · ✕ 删除 · 改名后已有记录会自动跟到新地点</div>
+  </div>
+</div>
+
+<!-- 收件人管理 -->
+<div class="modal-mask" id="recipientsMask">
+  <div class="modal">
+    <div class="m-head">
+      <h3>👤 管理收件人</h3>
+      <button class="m-close" id="recipientsClose">✕</button>
+    </div>
+    <div class="places-list" id="recipientsList"></div>
+    <div class="place-add">
+      <input type="text" id="inNewRecipient" placeholder="输入新收件人名称" autocomplete="off">
+      <button id="btnAddRecipient" type="button">添加</button>
+    </div>
+    <div class="p-tip">✎ 改名 · ✕ 删除 · 改名后已有记录会自动更新</div>
   </div>
 </div>
 
@@ -740,6 +757,33 @@
     localStorage.setItem(DEL_PLACES_KEY, JSON.stringify(deletedPlaces));
   }
 
+  /* ================= 收件人标签（可管理，云端同步） ================= */
+  const DEFAULT_RECIPIENTS = ['我', '妈妈', '爸爸'];
+  const RECIPIENTS_KEY = 'pickup_recipients_v1';
+  const DEL_RECIPIENTS_KEY = 'pickup_del_recipients_v1';
+  let recipients = loadRecipients();
+  let deletedRecipients = loadDeletedRecipients();
+  let editingRecipientIdx = null;
+
+  function loadRecipients() {
+    try {
+      const a = JSON.parse(localStorage.getItem(RECIPIENTS_KEY));
+      if (Array.isArray(a)) return a;
+    } catch (e) {}
+    return DEFAULT_RECIPIENTS.slice();
+  }
+  function loadDeletedRecipients() {
+    try {
+      const a = JSON.parse(localStorage.getItem(DEL_RECIPIENTS_KEY));
+      if (Array.isArray(a)) return a;
+    } catch (e) {}
+    return [];
+  }
+  function saveRecipientsLocal() {
+    localStorage.setItem(RECIPIENTS_KEY, JSON.stringify(recipients));
+    localStorage.setItem(DEL_RECIPIENTS_KEY, JSON.stringify(deletedRecipients));
+  }
+
   /* 地点合并：取并集，但排除被墓碑标记删除的地点 */
   function mergePlaces(localPlaces, cloudPlaces, localDel, cloudDel) {
     var delMap = {};
@@ -774,6 +818,36 @@
   async function syncPlaces() {
     if (!ghConfig.token) return;
     // Places are synced as part of the main data
+  }
+
+  /* 收件人合并：取并集，排除被墓碑标记删除的 */
+  function mergeRecipients(localRec, cloudRec, localDel, cloudDel) {
+    var delMap = {};
+    (localDel || []).forEach(function(d) {
+      if (d && d.name) delMap[d.name] = Math.max(delMap[d.name] || 0, d.deletedAt || 0);
+    });
+    (cloudDel || []).forEach(function(d) {
+      if (d && d.name) delMap[d.name] = Math.max(delMap[d.name] || 0, d.deletedAt || 0);
+    });
+    var all = {};
+    localRec.forEach(function(r) { all[r] = true; });
+    (cloudRec || []).forEach(function(r) { all[r] = true; });
+    var merged = Object.keys(all).filter(function(r) { return !delMap[r]; });
+    var cutoff = Date.now() - 7 * 864e5;
+    var mergedDel = Object.keys(delMap).map(function(name) {
+      return { name: name, deletedAt: delMap[name] };
+    }).filter(function(d) { return d.deletedAt >= cutoff; });
+    return { recipients: merged, deletedRecipients: mergedDel };
+  }
+  function renderRecipientTags() {
+    $('recipientTags').innerHTML = recipients.map(r =>
+      `<button class="quick-tag" data-rec="${esc(r)}" type="button">${esc(r)}</button>`).join('');
+  }
+
+  async function pushRecipients() {
+    saveRecipientsLocal(); renderRecipientTags();
+    if (!ghConfig.token || ghConfig.mode === 'local') return;
+    scheduleSync();
   }
 
   function renderPlacesList() {
@@ -936,16 +1010,16 @@
   async function apiGet() {
     var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
     var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 8000);
-    if (res.status === 404) return { records: [], places: [], deletedPlaces: [], _sha: null };
+    if (res.status === 404) return { records: [], places: [], deletedPlaces: [], recipients: [], deletedRecipients: [], _sha: null };
     if (!res.ok) throw new Error('GET failed: ' + res.status);
     var data = await res.json();
     var raw = data.content ? data.content.replace(/\n/g, '') : '';
     var content = raw ? base64ToUtf8(raw) : '{}';
     var parsed = JSON.parse(content);
-    return { records: parsed.records || [], places: parsed.places || [], deletedPlaces: parsed.deletedPlaces || [], _sha: data.sha };
+    return { records: parsed.records || [], places: parsed.places || [], deletedPlaces: parsed.deletedPlaces || [], recipients: parsed.recipients || [], deletedRecipients: parsed.deletedRecipients || [], _sha: data.sha };
   }
   async function apiPost(recs, sha) {
-    var jsonStr = JSON.stringify({ records: recs, places: places, deletedPlaces: deletedPlaces });
+    var jsonStr = JSON.stringify({ records: recs, places: places, deletedPlaces: deletedPlaces, recipients: recipients, deletedRecipients: deletedRecipients });
     var content = utf8ToBase64(jsonStr);
     var putUrl = ghApiBase() + '/contents/' + ghConfig.dataFile;
     var bodyObj = { message: 'sync pickup codes', content: content, branch: ghConfig.branch };
@@ -1005,10 +1079,26 @@
         deletedPlaces = pm.deletedPlaces;
         savePlacesLocal(); renderLocTags(); renderPlacesList();
       }
+      // 合并收件人（同样使用墓碑机制）
+      if (localStorage.getItem('pickup_rec_tomb_init') !== 'v1') {
+        deletedRecipients = [];
+        localStorage.removeItem(DEL_RECIPIENTS_KEY);
+        localStorage.setItem('pickup_rec_tomb_init', 'v1');
+      }
+      var rm = mergeRecipients(recipients, cloud.recipients || [], deletedRecipients, cloud.deletedRecipients || []);
+      var recChanged = JSON.stringify(rm.recipients.slice().sort()) !== JSON.stringify(recipients.slice().sort());
+      var recDelChanged = JSON.stringify(rm.deletedRecipients) !== JSON.stringify(deletedRecipients);
+      if (recChanged || recDelChanged) {
+        recipients = rm.recipients;
+        deletedRecipients = rm.deletedRecipients;
+        saveRecipientsLocal(); renderRecipientTags(); renderRecipientsList();
+      }
       // 判断是否需要上传
       var needUpload = sig(merged) !== sig(cloud.records || [])
         || JSON.stringify(places) !== JSON.stringify(cloud.places || [])
-        || JSON.stringify(deletedPlaces) !== JSON.stringify(cloud.deletedPlaces || []);
+        || JSON.stringify(deletedPlaces) !== JSON.stringify(cloud.deletedPlaces || [])
+        || JSON.stringify(recipients) !== JSON.stringify(cloud.recipients || [])
+        || JSON.stringify(deletedRecipients) !== JSON.stringify(cloud.deletedRecipients || []);
       if (needUpload) {
         try {
           await apiPost(merged, cloud._sha);
@@ -1021,10 +1111,13 @@
             var pm2 = mergePlaces(places, cloud2.places || [], deletedPlaces, cloud2.deletedPlaces || []);
             places = pm2.places;
             deletedPlaces = pm2.deletedPlaces;
+            var rm2 = mergeRecipients(recipients, cloud2.recipients || [], deletedRecipients, cloud2.deletedRecipients || []);
+            recipients = rm2.recipients;
+            deletedRecipients = rm2.deletedRecipients;
             if (sig(merged2) !== sig(records)) {
               records = merged2; saveLocal(); render();
             } else {
-              savePlacesLocal(); renderLocTags();
+              savePlacesLocal(); saveRecipientsLocal(); renderLocTags(); renderRecipientTags();
             }
             await apiPost(merged2, cloud2._sha);
           } else {
@@ -1268,12 +1361,13 @@
     editingId = rec ? rec.id : null;
     setType(rec && rec.type === 'send' ? 'send' : 'pickup');
     $('inCode').value = rec ? rec.code : '';
-    $('inRecipient').value = rec ? rec.recipient || '' : '';
-    $('inLocation').value = rec ? rec.location || '' : '';
+    $('inRecipient').value = rec ? rec.recipient || '' : (recipients[0] || '');
+    $('inLocation').value = rec ? rec.location || '' : (places[0] || '');
     $('inNote').value = rec ? rec.note || '' : '';
     $('fCode').classList.remove('invalid');
     updateBatchUI();
     syncLocTags();
+    syncRecipientTags();
     $('formMask').classList.add('show');
     setTimeout(() => { $('inCode').focus(); adjustFormModalForKeyboard(); }, 260);
   }
@@ -1480,6 +1574,109 @@
         deletedPlaces.push({ name: name, deletedAt: Date.now() });
       }
       pushPlaces(); renderPlacesList();
+      toast('已删除：' + name);
+    }
+  });
+
+  // 收件人标签与输入框联动高亮
+  function syncRecipientTags() {
+    const v = $('inRecipient').value.trim();
+    document.querySelectorAll('#recipientTags .quick-tag').forEach(t => {
+      t.classList.toggle('active', t.dataset.rec === v);
+    });
+  }
+  $('inRecipient').addEventListener('input', syncRecipientTags);
+
+  // 收件人标签点击选中
+  $('recipientTags').addEventListener('click', e => {
+    const t = e.target.closest('.quick-tag');
+    if (!t) return;
+    $('inRecipient').value = t.dataset.rec;
+    syncRecipientTags();
+  });
+
+  // 收件人管理
+  $('btnRecipients').addEventListener('click', () => {
+    editingRecipientIdx = null;
+    renderRecipientsList();
+    $('recipientsMask').classList.add('show');
+  });
+  $('recipientsClose').addEventListener('click', () => $('recipientsMask').classList.remove('show'));
+  $('recipientsMask').addEventListener('click', e => { if (e.target === $('recipientsMask')) $('recipientsMask').classList.remove('show'); });
+
+  function renderRecipientsList() {
+    $('recipientsList').innerHTML = recipients.length ? recipients.map((r, i) =>
+      i === editingRecipientIdx
+        ? `<div class="place-row">
+             <input type="text" class="p-input" id="recipientEditInput" value="${esc(r)}" autocomplete="off">
+             <button class="p-save" data-ridx="${i}" type="button">✓</button>
+           </div>`
+        : `<div class="place-row">
+             <span class="p-name">${esc(r)}</span>
+             <div class="p-ops">
+               <button class="p-edit" data-ridx="${i}" type="button">✎</button>
+               <button class="p-del" data-rdel="${esc(r)}" type="button">✕</button>
+             </div>
+           </div>`
+    ).join('') : '<div class="p-empty">还没有收件人，添加一个吧～</div>';
+    if (editingRecipientIdx !== null) {
+      setTimeout(() => {
+        const inp = $('recipientEditInput');
+        if (inp) { inp.focus(); inp.select(); }
+      }, 10);
+    }
+  }
+
+  function addRecipient() {
+    const v = $('inNewRecipient').value.trim();
+    if (!v) return;
+    if (recipients.includes(v)) { toast('这个收件人已存在'); return; }
+    recipients.push(v);
+    deletedRecipients = deletedRecipients.filter(d => d.name !== v);
+    $('inNewRecipient').value = '';
+    pushRecipients(); renderRecipientsList();
+    toast('已添加：' + v);
+  }
+  $('btnAddRecipient').addEventListener('click', addRecipient);
+  $('inNewRecipient').addEventListener('keydown', e => { if (e.key === 'Enter') addRecipient(); });
+
+  function saveRecipientEdit() {
+    if (editingRecipientIdx === null) return;
+    const inp = $('recipientEditInput');
+    const nv = inp ? inp.value.trim() : '';
+    if (!nv) { toast('名称不能为空'); return; }
+    const oldName = recipients[editingRecipientIdx];
+    if (nv === oldName) { editingRecipientIdx = null; renderRecipientsList(); return; }
+    if (recipients.includes(nv)) { toast('这个名称已存在'); return; }
+    recipients[editingRecipientIdx] = nv;
+    // 旧名字加入墓碑
+    if (!deletedRecipients.find(d => d.name === oldName)) {
+      deletedRecipients.push({ name: oldName, deletedAt: Date.now() });
+    }
+    // 新名字从墓碑移除（防止被误删）
+    deletedRecipients = deletedRecipients.filter(d => d.name !== nv);
+    // 同步更新所有记录中的收件人
+    records.forEach(r => { if (r.recipient === oldName) { r.recipient = nv; touch(r); } });
+    editingRecipientIdx = null;
+    saveRecipientsLocal(); saveLocal();
+    renderRecipientTags(); renderRecipientsList(); render();
+    scheduleSync();
+    toast('已修改');
+  }
+
+  $('recipientsList').addEventListener('click', e => {
+    const editBtn = e.target.closest('.p-edit');
+    if (editBtn) { editingRecipientIdx = +editBtn.dataset.ridx; renderRecipientsList(); return; }
+    const saveBtn = e.target.closest('.p-save');
+    if (saveBtn) { saveRecipientEdit(); return; }
+    const delBtn = e.target.closest('.p-del');
+    if (delBtn) {
+      const name = delBtn.dataset.rdel;
+      recipients = recipients.filter(r => r !== name);
+      if (!deletedRecipients.find(d => d.name === name)) {
+        deletedRecipients.push({ name: name, deletedAt: Date.now() });
+      }
+      pushRecipients(); renderRecipientsList();
       toast('已删除：' + name);
     }
   });
@@ -1750,6 +1947,7 @@
 
   /* ================= 初始化 ================= */
   renderLocTags();
+  renderRecipientTags();
   render();
   if (ghConfig.token && ghConfig.mode !== 'local') {
     setSyncStatus('busy');
