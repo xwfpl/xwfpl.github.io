@@ -1010,7 +1010,27 @@
         || JSON.stringify(places) !== JSON.stringify(cloud.places || [])
         || JSON.stringify(deletedPlaces) !== JSON.stringify(cloud.deletedPlaces || []);
       if (needUpload) {
-        await apiPost(merged, cloud._sha);
+        try {
+          await apiPost(merged, cloud._sha);
+        } catch (putErr) {
+          // 409冲突：另一个设备刚改过，重新拉取最新数据再合并上传
+          var putMsg = String(putErr.message || '');
+          if (putMsg.indexOf('409') >= 0) {
+            var cloud2 = await apiGet();
+            var merged2 = mergeRecords(merged, cloud2.records || []);
+            var pm2 = mergePlaces(places, cloud2.places || [], deletedPlaces, cloud2.deletedPlaces || []);
+            places = pm2.places;
+            deletedPlaces = pm2.deletedPlaces;
+            if (sig(merged2) !== sig(records)) {
+              records = merged2; saveLocal(); render();
+            } else {
+              savePlacesLocal(); renderLocTags();
+            }
+            await apiPost(merged2, cloud2._sha);
+          } else {
+            throw putErr;
+          }
+        }
       }
       setSyncStatus('ok');
       syncFails = 0; lastSyncOK = Date.now();
