@@ -610,7 +610,7 @@
 <div class="confirm-mask" id="confirmMask">
   <div class="confirm-box">
     <p id="confirmText">确认删除？</p>
-    <div class="c-ops">
+    <div class="c-ops" id="confirmOps">
       <button class="c-cancel" id="confirmCancel">取消</button>
       <button class="c-ok" id="confirmOk">删除</button>
     </div>
@@ -1449,14 +1449,39 @@
     });
     if (dupList.length > 0) {
       const msg = dupList.length === 1
-        ? '取件码 ' + dupList[0] + ' 已存在，还要添加吗？'
-        : '有 ' + dupList.length + ' 个取件码已存在（' + dupList.slice(0, 3).join('、') + (dupList.length > 3 ? '…' : '') + '），还要继续添加吗？';
-      confirmAsk(msg, '仍然添加', false, function() {
-        doSaveCodes(codes, data, isSend);
-      });
+        ? '取件码 ' + dupList[0] + ' 已存在，要怎么处理？'
+        : '有 ' + dupList.length + ' 个取件码已存在（' + dupList.slice(0, 3).join('、') + (dupList.length > 3 ? '…' : '') + '），要怎么处理？';
+      confirmAskOverwrite(msg,
+        function() { doSaveCodes(codes, data, isSend); },
+        function() { doOverwriteCodes(codes, data, isSend); }
+      );
       return;
     }
     doSaveCodes(codes, data, isSend);
+  }
+
+  function doOverwriteCodes(codes, data, isSend) {
+    codes.forEach(code => {
+      // 找到已有的同类型记录并覆盖
+      const existing = records.find(r => !r.deleted && r.code === code && r.type === (isSend ? 'send' : undefined));
+      if (existing) {
+        Object.assign(existing, data, { code: code });
+        touch(existing);
+      } else {
+        // 不存在则新增
+        const now = Date.now();
+        const rec = Object.assign(
+          { id: uid(), createdAt: now, takenAt: null, updatedAt: now },
+          data, { code }
+        );
+        if (isSend) rec.type = 'send';
+        records.push(rec);
+      }
+    });
+    saveLocal(); closeForm(); render(); scheduleSync();
+    const n = codes.length;
+    if (n > 1) toast('已覆盖 ' + n + ' 条 ' + (isSend ? '寄件码 📮' : '取件码 📦'));
+    else toast('已覆盖更新 📦');
   }
 
   function doSaveCodes(codes, data, isSend) {
@@ -1477,15 +1502,35 @@
 
   /* ================= 确认框 ================= */
   let confirmAction = null;
+  let confirmOverwriteAction = null;
   function confirmAsk(text, okText, green, fn) {
     $('confirmText').textContent = text;
     const ok = $('confirmOk');
     ok.textContent = okText;
     ok.className = 'c-ok' + (green ? ' green' : '');
     confirmAction = fn;
+    confirmOverwriteAction = null;
+    $('confirmOps').innerHTML = '<button class="c-cancel" id="confirmCancel">取消</button><button class="c-ok' + (green ? ' green' : '') + '" id="confirmOk">' + okText + '</button>';
+    bindConfirmButtons();
     $('confirmMask').classList.add('show');
   }
-  function closeConfirm() { $('confirmMask').classList.remove('show'); confirmAction = null; }
+  function confirmAskOverwrite(text, fnAdd, fnOverwrite) {
+    $('confirmText').textContent = text;
+    confirmAction = fnAdd;
+    confirmOverwriteAction = fnOverwrite;
+    $('confirmOps').innerHTML = '<button class="c-cancel" id="confirmCancel">取消</button><button class="c-ok" id="confirmOverwrite">覆盖</button><button class="c-ok green" id="confirmOk">仍然添加</button>';
+    bindConfirmButtons();
+    $('confirmMask').classList.add('show');
+  }
+  function bindConfirmButtons() {
+    var cancelBtn = document.getElementById('confirmCancel');
+    var okBtn = document.getElementById('confirmOk');
+    var overBtn = document.getElementById('confirmOverwrite');
+    if (cancelBtn) cancelBtn.addEventListener('click', closeConfirm);
+    if (okBtn) okBtn.addEventListener('click', function() { if (confirmAction) confirmAction(); closeConfirm(); });
+    if (overBtn) overBtn.addEventListener('click', function() { if (confirmOverwriteAction) confirmOverwriteAction(); closeConfirm(); });
+  }
+  function closeConfirm() { $('confirmMask').classList.remove('show'); confirmAction = null; confirmOverwriteAction = null; }
 
   /* ================= 事件 ================= */
   $('fab').addEventListener('click', () => openForm(null));
@@ -1831,10 +1876,8 @@
   $('bigMask').addEventListener('click', () => $('bigMask').classList.remove('show'));
   $('bigClose').addEventListener('click', e => { e.stopPropagation(); $('bigMask').classList.remove('show'); });
 
-  // 确认框按钮
-  $('confirmCancel').addEventListener('click', closeConfirm);
+  // 确认框背景点击关闭
   $('confirmMask').addEventListener('click', e => { if (e.target === $('confirmMask')) closeConfirm(); });
-  $('confirmOk').addEventListener('click', () => { if (confirmAction) confirmAction(); closeConfirm(); });
 
   // 工具面板
   $('btnTools').addEventListener('click', () => {
