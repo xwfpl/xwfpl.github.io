@@ -63,6 +63,9 @@
     padding: 5px 10px; font-size: 11px; color: #fff; font-weight: 600;
   }
   .sync-chip:active { background: rgba(255,255,255,.3); }
+  .sync-icon { font-size: 12px; display: inline-block; }
+  .sync-chip.busy .sync-icon { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; flex: none; }
   .sync-chip.busy .s-dot { background: #ffe9b8; animation: pulse 1s infinite; }
   .sync-chip.off .s-dot { background: #fca5a5; }
@@ -487,8 +490,8 @@
   <div class="row1">
     <div class="logo">📦</div>
     <h1>取件码小本本</h1>
-    <button class="sync-chip" id="syncChip" title="云同步状态，点击立即同步">
-      <span class="s-dot"></span><span id="syncText">…</span>
+    <button class="sync-chip" id="syncChip" title="点击手动同步">
+      <span class="s-dot"></span><span id="syncText">…</span><span class="sync-icon">🔄</span>
     </button>
     <button class="icon-btn" id="btnTools" title="工具">🧰</button>
   </div>
@@ -1149,7 +1152,7 @@
   function scheduleSync() {
     if (!ghConfig.token || ghConfig.mode === 'local') return;
     clearTimeout(syncTimer);
-    syncTimer = setTimeout(function() { syncNow(false); }, 800);  // reduced from 1200 to 800
+    syncTimer = setTimeout(function() { syncNow(false); }, 120000);  // 2分钟后自动同步
   }
 
   /* 断连自愈看门狗 */
@@ -2001,7 +2004,7 @@
   if (ghConfig.token && ghConfig.mode !== 'local') {
     setSyncStatus('busy');
     syncNow(false);
-    setInterval(() => { syncNow(false); }, 30000);
+    setInterval(() => { syncNow(false); }, 120000);  // 每2分钟自动同步
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { syncNow(false); } });
     window.addEventListener('online', () => { syncNow(false); });
   } else {
