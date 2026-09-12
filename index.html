@@ -1009,7 +1009,7 @@
 
   async function apiGet() {
     var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
-    var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 8000);
+    var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 20000);
     if (res.status === 404) return { records: [], places: [], deletedPlaces: [], recipients: [], deletedRecipients: [], _sha: null };
     if (!res.ok) throw new Error('GET failed: ' + res.status);
     var data = await res.json();
@@ -1029,7 +1029,7 @@
       method: 'PUT',
       headers: Object.assign(ghHeaders(), { 'Content-Type': 'application/json' }),
       body: body
-    }, 8000);
+    }, 20000);
     if (!res.ok) {
       var errText = '';
       try { var errData = await res.json(); errText = errData.message || ''; } catch(e2) {}
@@ -1138,7 +1138,9 @@
       if (manual) toast('同步失败: ' + errMsg);
       if (!syncRetryTimer) {
         syncFails++;
-        syncRetryTimer = setTimeout(function() { syncRetryTimer = null; syncNow(false); }, 5000);
+        // 指数退避：5秒、10秒、20秒、40秒...最多60秒
+        var delay = Math.min(5000 * Math.pow(2, Math.min(syncFails - 1, 4)), 60000);
+        syncRetryTimer = setTimeout(function() { syncRetryTimer = null; syncNow(false); }, delay);
       }
       startSyncWatchdog();
     } finally { syncing = false; }
@@ -1155,10 +1157,10 @@
     if (!ghConfig.token || ghConfig.mode === 'local' || syncWatchdog) return;
     syncWatchdog = setInterval(() => {
       const st = $('syncText').textContent;
-      const recentOK = (Date.now() - lastSyncOK) < 4000;
-      if (st !== '已同步' && !syncing && !recentOK) syncNow(false);
+      const recentOK = (Date.now() - lastSyncOK) < 10000;
+      if (st !== '已同步' && !syncing && !recentOK && !syncRetryTimer) syncNow(false);
       else if (st === '已同步') stopSyncWatchdog();
-    }, 3000);
+    }, 8000);
   }
   function stopSyncWatchdog() {
     if (syncWatchdog) { clearInterval(syncWatchdog); syncWatchdog = null; }
