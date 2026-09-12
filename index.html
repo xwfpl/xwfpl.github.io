@@ -1263,6 +1263,10 @@
     const isErr = !!r.errAt;
     const isSend = r.type === 'send';
     const metaRows = [];
+    // 已取/已收走时显示时间
+    if (taken) {
+      metaRows.push(`<div class="meta-row"><span class="mk">${isSend ? '收走时间' : '取件时间'}</span><span class="mv">${fmtTime(r.takenAt)}</span></div>`);
+    }
     // 寄件码的备注跟在寄件人后面，不再独占一行
     const dot = isErr
       ? '<span class="status-dot err">⚠️ 错误</span>'
