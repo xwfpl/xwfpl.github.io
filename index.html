@@ -924,6 +924,15 @@
     const p = n => String(n).padStart(2, '0');
     return `${d.getMonth()+1}月${d.getDate()}日 ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
+  // 计算距今天数（按自然日）
+  function daysSince(ts) {
+    if (!ts) return 0;
+    const start = new Date(ts);
+    start.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.max(0, Math.floor((today - start) / 86400000));
+  }
 
   /* ---------- 状态 ---------- */
   let curTab = 'pending';
@@ -1268,6 +1277,10 @@
     const isErr = !!r.errAt;
     const isSend = r.type === 'send';
     const metaRows = [];
+    // 录入天数
+    const days = daysSince(r.createdAt || r.updatedAt);
+    const daysLabel = days <= 0 ? '今天' : '已录入 ' + days + ' 天';
+    metaRows.push(`<div class="meta-row"><span class="mk">录入</span><span class="mv">${daysLabel}</span></div>`);
     // 已取/已收走时显示时间
     if (taken) {
       metaRows.push(`<div class="meta-row"><span class="mk">${isSend ? '收走时间' : '取件时间'}</span><span class="mv">${fmtTime(r.takenAt)}</span></div>`);
