@@ -165,10 +165,15 @@
     color: var(--text);
     white-space: nowrap; flex: none; line-height: 1.2;
   }
+  .code-sub { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .code-recipient {
-    display: inline; font-size: 12px; font-weight: 600;
+    font-size: 12px; font-weight: 600;
     color: var(--text-3); letter-spacing: 0;
-    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .code-note {
+    font-size: 12px; color: var(--text-3); letter-spacing: 0;
+    line-height: 1.35; overflow-wrap: anywhere;
   }
   .card.taken .code-value { color: var(--green); text-decoration: line-through; text-decoration-thickness: 1.5px; }
   .take-btn {
@@ -1342,11 +1347,11 @@
       ? (isSend ? '<span class="status-dot sendok">✓ 已收走</span>' : '<span class="status-dot ok">✓ 已取</span>')
       : '';
     const btnText = isErr ? '↩ 恢复' : (taken ? '↩ 恢复' : (isSend ? '✓ 已收' : '✓ 已取'));
-    // 收件人/寄件人 + 备注：合并成一行小字跟在取件码后面
-    let recText = '';
-    if (r.recipient) recText += esc(r.recipient);
-    if (r.note) recText += (recText ? ' · ' : '') + esc(r.note);
-    const recLabel = recText ? `<span class="code-recipient">${recText}</span>` : '';
+    // 收件人/寄件人 与 备注：同一位置上下两行显示（备注不再被截断）
+    let subText = '';
+    if (r.recipient) subText += `<div class="code-recipient">${esc(r.recipient)}</div>`;
+    if (r.note) subText += `<div class="code-note">${esc(r.note)}</div>`;
+    const recLabel = subText ? `<div class="code-sub">${subText}</div>` : '';
     return `<div class="card ${isErr ? 'err' : ''} ${taken ? 'taken' : ''} ${isSend ? 'send' : ''}" data-card="${r.id}">
       <div class="code-zone">
         <div class="code-main">
