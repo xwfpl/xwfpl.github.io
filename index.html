@@ -147,8 +147,8 @@
   }
   .card.taken .code-zone { background: var(--green-light); }
   .card.err .code-zone { background: linear-gradient(135deg, #fff4f4, #fff); border: 1px solid #ffd9db; }
-  .code-main { flex: 1; min-width: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .code-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 6px; min-width: 0; flex: 1; }
+  .code-main { flex: 1; min-width: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+  .code-line { display: flex; align-items: baseline; flex-wrap: nowrap; gap: 4px 6px; min-width: 0; flex: 1; }
   .status-dot {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 14px; padding: 4px 12px; border-radius: 999px;
@@ -161,13 +161,14 @@
   .code-value.err-code::after { content: ' ⚠'; font-size: .55em; vertical-align: middle; letter-spacing: 0; }
   .code-value {
     font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
-    font-size: 21px; font-weight: 800; letter-spacing: .8px;
+    font-size: 24px; font-weight: 800; letter-spacing: .8px;
     color: var(--text);
-    word-break: break-all; line-height: 1.2;
+    white-space: nowrap; flex: none; line-height: 1.2;
   }
   .code-recipient {
     display: inline; font-size: 12px; font-weight: 600;
     color: var(--text-3); letter-spacing: 0;
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .card.taken .code-value { color: var(--green); text-decoration: line-through; text-decoration-thickness: 1.5px; }
   .take-btn {
@@ -496,7 +497,7 @@
     .card .code-zone { padding: 10px 12px; gap: 7px; }
     .code-main { gap: 6px; }
     .status-dot { font-size: 12.5px; padding: 3px 9px; }
-    .code-value { font-size: 20px; letter-spacing: .4px; }
+    .code-value { font-size: 23px; letter-spacing: .4px; }
     .code-actions { gap: 5px; }
     .days-tag { font-size: 13px; padding: 4px 8px; border-width: 1px; }
     .take-btn { padding: 8px 11px; font-size: 12.5px; }
@@ -1334,11 +1335,12 @@
       metaRows.push(`<div class="meta-row"><span class="mk">${isSend ? '收走时间' : '取件时间'}</span><span class="mv">${fmtTime(r.takenAt)}</span></div>`);
     }
     // 寄件码的备注跟在寄件人后面，不再独占一行
+    // 待取 / 寄件 不再显示前置标签；仅保留 已取(收走) 与 错误 状态
     const dot = isErr
       ? '<span class="status-dot err">⚠️ 错误</span>'
       : taken
       ? (isSend ? '<span class="status-dot sendok">✓ 已收走</span>' : '<span class="status-dot ok">✓ 已取</span>')
-      : (isSend ? '<span class="status-dot send">📮 寄件</span>' : '<span class="status-dot pending">待取</span>');
+      : '';
     const btnText = isErr ? '↩ 恢复' : (taken ? '↩ 恢复' : (isSend ? '✓ 已收' : '✓ 已取'));
     // 收件人/寄件人 + 备注：合并成一行小字跟在取件码后面
     let recText = '';
