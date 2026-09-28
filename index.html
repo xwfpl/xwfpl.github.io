@@ -181,7 +181,13 @@
   .take-btn:active { transform: scale(.94); }
   .take-btn.is-taken { background: #eef0f3; color: var(--text-2); box-shadow: none; }
   .code-actions { display: flex; align-items: center; gap: 6px; flex: none; }
-  .days-tag { font-size: 11px; color: var(--text-3); font-weight: 600; letter-spacing: .2px; white-space: nowrap; }
+  .days-tag {
+    flex: none; align-self: center;
+    font-size: 14px; color: var(--primary); background: var(--primary-light);
+    border: 1.5px solid #ffd7b0;
+    font-weight: 800; letter-spacing: .3px; white-space: nowrap;
+    padding: 5px 10px; border-radius: 999px; line-height: 1;
+  }
   .err-btn {
     flex: none; align-self: center;
     min-width: 40px; padding: 7px 9px;
