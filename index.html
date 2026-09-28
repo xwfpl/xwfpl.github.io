@@ -951,10 +951,19 @@
   const _tp = ['ghp_x','eGZB7','k9xM7','Sq5J3','XteN','Ue8X','Bdek','bg0b','gfvi'];
   const DEFAULT_GH = { token: _tp.join(''), owner: 'xwfpl', repo: 'xwfpl.github.io', branch: 'main', dataFile: 'pickup-data.json', mode: 'cloud' };
   let ghConfig = loadGHConfig();
-  let syncTimer = null, syncing = false;
+  let syncTimer = null, syncing = false, syncStartedAt = 0;
   let syncRetryTimer = null, syncFails = 0;
   let lastSyncOK = 0;
   let syncWatchdog = null;
+  // 单次同步最长允许时间：超时认为卡死，强制解锁（防止切后台被冻结后 syncing 卡住）
+  const SYNC_TIMEOUT = 90000;
+
+  // 解除卡死的同步锁
+  function releaseStuckSync() {
+    if (syncing && syncStartedAt && (Date.now() - syncStartedAt) > SYNC_TIMEOUT) {
+      syncing = false;
+    }
+  }
 
   function loadGHConfig() {
     try {
@@ -983,18 +992,36 @@
     else { chip.className = 'sync-chip off'; txt.textContent = '未连接'; }
   }
 
-  // Fetch with timeout (with AbortController fallback)
-  function fetchWithTimeout(url, options, ms) {
-    if (typeof AbortController !== 'undefined') {
-      var controller = new AbortController();
-      var signal = controller.signal;
-      var opts = Object.assign({}, options || {}, { signal: signal });
-      var timer = setTimeout(function() { controller.abort(); }, ms || 15000);
-      return fetch(url, opts).then(function(res) { clearTimeout(timer); return res; }, function(err) { clearTimeout(timer); throw err; });
-    } else {
-      // Fallback: no abort, just fetch
-      return fetch(url, options);
+  // 带超时 + 自动重试的 fetch（手机网络较慢/易断，失败会自动重试）
+  function isAbortErr(e) {
+    return !!e && (e.name === 'AbortError' || /abort/i.test(String(e.message || e)));
+  }
+  function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+  async function fetchWithTimeout(url, options, ms, retries) {
+    ms = ms || 45000;                        // 默认 45 秒（移动网络较慢）
+    retries = (retries == null) ? 2 : retries;
+    var attempt = 0, lastErr = null;
+    while (attempt <= retries) {
+      attempt++;
+      var timer = null;
+      var opts = options || {};
+      if (typeof AbortController !== 'undefined') {
+        var controller = new AbortController();
+        opts = Object.assign({}, options || {}, { signal: controller.signal });
+        timer = setTimeout(function() { try { controller.abort(); } catch (e) {} }, ms);
+      }
+      try {
+        var res = await fetch(url, opts);
+        if (timer) clearTimeout(timer);
+        return res;
+      } catch (e) {
+        if (timer) clearTimeout(timer);
+        lastErr = e;
+        if (attempt <= retries) { await sleep(1000 * attempt); continue; }
+      }
     }
+    if (isAbortErr(lastErr)) throw new Error('网络超时(' + Math.round(ms / 1000) + '秒无响应)，请检查手机网络后重试');
+    throw lastErr || new Error('网络请求失败');
   }
 
   // UTF-8 safe base64 encode
@@ -1023,7 +1050,7 @@
 
   async function apiGet() {
     var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
-    var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 20000);
+    var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 45000);
     if (res.status === 404) return { records: [], places: [], deletedPlaces: [], recipients: [], deletedRecipients: [], _sha: null };
     if (!res.ok) throw new Error('GET failed: ' + res.status);
     var data = await res.json();
@@ -1043,7 +1070,7 @@
       method: 'PUT',
       headers: Object.assign(ghHeaders(), { 'Content-Type': 'application/json' }),
       body: body
-    }, 20000);
+    }, 60000);
     if (!res.ok) {
       var errText = '';
       try { var errData = await res.json(); errText = errData.message || ''; } catch(e2) {}
@@ -1066,8 +1093,10 @@
   }
 
   async function syncNow(manual) {
-    if (!ghConfig.token || ghConfig.mode === 'local' || syncing) return;
-    syncing = true; setSyncStatus('busy');
+    if (!ghConfig.token || ghConfig.mode === 'local') return;
+    releaseStuckSync();                 // 若上次同步卡死则解锁，避免永久无法同步
+    if (syncing) return;
+    syncing = true; syncStartedAt = Date.now(); setSyncStatus('busy');
     try {
       var cloud = await apiGet();
       // 合并记录
@@ -2024,6 +2053,8 @@
     setInterval(() => { syncNow(false); }, 120000);  // 每2分钟自动同步
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { syncNow(false); } });
     window.addEventListener('online', () => { syncNow(false); });
+    // 从后台/内存缓存恢复时，之前的网络请求已被系统中断，解锁后立即重试
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { syncing = false; syncNow(false); } });
   } else {
     setSyncStatus('local');
   }
