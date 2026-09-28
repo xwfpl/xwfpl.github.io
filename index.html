@@ -489,6 +489,18 @@
   .gh-mode-btn.active {
     border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark);
   }
+
+  /* ===== 手机端：压缩横向占用，避免取件码被挤成两行 ===== */
+  @media (max-width: 480px) {
+    .list { padding-left: 10px; padding-right: 10px; }
+    .card .code-zone { padding: 10px 12px; gap: 7px; }
+    .code-main { gap: 6px; }
+    .status-dot { font-size: 12.5px; padding: 3px 9px; }
+    .code-value { font-size: 20px; letter-spacing: .4px; }
+    .code-actions { gap: 5px; }
+    .days-tag { font-size: 13px; padding: 4px 8px; border-width: 1px; }
+    .take-btn { padding: 8px 11px; font-size: 12.5px; }
+  }
 </style>
 </head>
 <body>
