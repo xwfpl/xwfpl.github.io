@@ -180,6 +180,8 @@
   }
   .take-btn:active { transform: scale(.94); }
   .take-btn.is-taken { background: #eef0f3; color: var(--text-2); box-shadow: none; }
+  .code-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+  .days-tag { font-size: 11px; color: var(--text-3); font-weight: 600; letter-spacing: .2px; white-space: nowrap; }
   .err-btn {
     flex: none; align-self: center;
     min-width: 40px; padding: 7px 9px;
@@ -1277,10 +1279,9 @@
     const isErr = !!r.errAt;
     const isSend = r.type === 'send';
     const metaRows = [];
-    // 录入天数
+    // 录入天数（显示在按钮旁边）
     const days = daysSince(r.createdAt || r.updatedAt);
-    const daysLabel = days <= 0 ? '今天' : '已录入 ' + days + ' 天';
-    metaRows.push(`<div class="meta-row"><span class="mk">录入</span><span class="mv">${daysLabel}</span></div>`);
+    const daysLabel = days <= 0 ? '今天' : days + '天';
     // 已取/已收走时显示时间
     if (taken) {
       metaRows.push(`<div class="meta-row"><span class="mk">${isSend ? '收走时间' : '取件时间'}</span><span class="mv">${fmtTime(r.takenAt)}</span></div>`);
@@ -1305,9 +1306,12 @@
             <span class="code-value ${isErr ? 'err-code' : ''}">${esc(r.code)}</span>${recLabel}
           </div>
         </div>
-        ${isErr
-          ? `<button class="take-btn" data-err-undo="${r.id}" title="取消标记，恢复为正常待取">↩ 恢复</button>`
-          : `<button class="take-btn ${isSend ? 'send-btn' : ''} ${taken ? 'is-taken' : ''}" data-toggle="${r.id}">${btnText}</button>`}
+        <div class="code-actions">
+          <span class="days-tag">${daysLabel}</span>
+          ${isErr
+            ? `<button class="take-btn" data-err-undo="${r.id}" title="取消标记，恢复为正常待取">↩ 恢复</button>`
+            : `<button class="take-btn ${isSend ? 'send-btn' : ''} ${taken ? 'is-taken' : ''}" data-toggle="${r.id}">${btnText}</button>`}
+        </div>
       </div>
       ${metaRows.length ? `<div class="meta">${metaRows.join('')}</div>` : ''}
     </div>`;
