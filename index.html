@@ -310,8 +310,10 @@
   .code-hint b { color: var(--primary-dark); font-weight: 800; }
   .batch-badge { display: none; flex-shrink: 0; background: #e8f3ff; color: var(--primary-dark);
     font-weight: 800; font-size: 11px; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
-  .sim-badge { display: none; flex-shrink: 0; background: #fff3e0; color: #c4500c;
-    font-weight: 700; font-size: 11px; border-radius: 999px; padding: 2px 9px; white-space: nowrap; cursor: pointer; }
+  .sim-badge { display: none; flex-shrink: 0; background: #fff1f0; color: #cf1322;
+    font-weight: 800; font-size: 13px; border: 1.5px solid #ffa39e; border-radius: 8px; padding: 4px 12px;
+    white-space: nowrap; cursor: pointer; line-height: 1.4; }
+  .sim-badge:active { background: #ffccc7; }
   /* 多行取件码输入框：回车换行、可滚到多条，整体略高以提示可多行 */
   #inCode { resize: none; height: 60px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
   #inCode::-webkit-scrollbar { width: 4px; }
@@ -1497,7 +1499,7 @@
     }
     if (best) {
       badge.style.display = 'inline-block';
-      badge.textContent = '⚠ 与已有 ' + best.code + ' 有' + best.len + '位相同';
+      badge.textContent = '⚠️ 可能重复！与已有 ' + best.code + ' 有' + best.len + '位相同，点击查看';
       badge.onclick = function() { $('inCode').value = best.code + '\n'; formatCodeLines(false); updateBatchUI(); };
     } else {
       badge.style.display = 'none';
