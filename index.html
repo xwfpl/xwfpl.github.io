@@ -1482,19 +1482,27 @@
     const badge = $('simBadge');
     if (!badge) return;
     const raw = $('inCode').value.trim();
-    // 拆出所有有效行，逐行匹配
-    const lines = raw.split(/\r?\n|;/).map(s => s.trim().replace(/-+$/g, '').replace(/-/g, '')).filter(s => s.length >= 3);
-    if (lines.length === 0) { badge.style.display = 'none'; return; }
+    // 拆出所有有效行，再按横杠分段，逐段匹配（不跨段）
+    const inputSegs = [];
+    raw.split(/\r?\n|;/).forEach(function(s) {
+      s.trim().replace(/-+$/g, '').split('-').forEach(function(seg) {
+        if (seg.length >= 3) inputSegs.push(seg);
+      });
+    });
+    if (inputSegs.length === 0) { badge.style.display = 'none'; return; }
     const isSend = curType === 'send';
     const active = records.filter(r => !r.deleted && (isSend ? r.type === 'send' : r.type !== 'send'));
     let best = null;
-    for (const line of lines) {
+    for (const inSeg of inputSegs) {
       for (const r of active) {
-        const ec = (r.code || '').replace(/-/g, '');
-        if (ec.length < 3) continue;
-        const lcs = longestCommonSubstr(line, ec);
-        if (lcs >= 3 && (!best || lcs > best.len)) {
-          best = { len: lcs, code: r.code };
+        const code = r.code || '';
+        // 按横杠分段，只在每段内部匹配，不跨段
+        const segments = code.split('-').filter(s => s.length >= 3);
+        for (const seg of segments) {
+          const lcs = longestCommonSubstr(inSeg, seg);
+          if (lcs >= 3 && (!best || lcs > best.len)) {
+            best = { len: lcs, code: r.code };
+          }
         }
       }
     }
