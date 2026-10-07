@@ -1483,7 +1483,7 @@
     if (!badge) return;
     const raw = $('inCode').value.trim();
     // 拆出所有有效行，逐行匹配
-    const lines = raw.split(/\r?\n|;/).map(s => s.trim().replace(/-+$/g, '').replace(/-/g, '')).filter(s => s.length >= 4);
+    const lines = raw.split(/\r?\n|;/).map(s => s.trim().replace(/-+$/g, '').replace(/-/g, '')).filter(s => s.length >= 2);
     if (lines.length === 0) { badge.style.display = 'none'; return; }
     const isSend = curType === 'send';
     const active = records.filter(r => !r.deleted && (isSend ? r.type === 'send' : r.type !== 'send'));
@@ -1491,9 +1491,9 @@
     for (const line of lines) {
       for (const r of active) {
         const ec = (r.code || '').replace(/-/g, '');
-        if (ec.length < 4) continue;
+        if (ec.length < 2) continue;
         const lcs = longestCommonSubstr(line, ec);
-        if (lcs >= 4 && (!best || lcs > best.len)) {
+        if (lcs >= 2 && (!best || lcs > best.len)) {
           best = { len: lcs, code: r.code };
         }
       }
