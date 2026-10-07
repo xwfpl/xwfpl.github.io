@@ -1477,24 +1477,25 @@
     }
   }
 
-  /* 相似取件码提醒：输入超过4位且与已有记录有4位以上连续数字重合时提示 */
+  /* 相似取件码提醒：输入的每行取件码与已有记录有3位以上连续数字重合时提示 */
   function updateSimBadge() {
     const badge = $('simBadge');
     if (!badge) return;
     const raw = $('inCode').value.trim();
-    // 取第一行有效内容做匹配
-    const firstLine = raw.split(/\r?\n|;/)[0].trim().replace(/-+$/g, '').replace(/-/g, '');
-    if (firstLine.length < 4) { badge.style.display = 'none'; return; }
+    // 拆出所有有效行，逐行匹配
+    const lines = raw.split(/\r?\n|;/).map(s => s.trim().replace(/-+$/g, '').replace(/-/g, '')).filter(s => s.length >= 4);
+    if (lines.length === 0) { badge.style.display = 'none'; return; }
     const isSend = curType === 'send';
     const active = records.filter(r => !r.deleted && (isSend ? r.type === 'send' : r.type !== 'send'));
     let best = null;
-    for (const r of active) {
-      const ec = (r.code || '').replace(/-/g, '');
-      if (ec.length < 4) continue;
-      // 求最长连续公共子串
-      const lcs = longestCommonSubstr(firstLine, ec);
-      if (lcs >= 3 && (!best || lcs > best.len)) {
-        best = { len: lcs, code: r.code };
+    for (const line of lines) {
+      for (const r of active) {
+        const ec = (r.code || '').replace(/-/g, '');
+        if (ec.length < 4) continue;
+        const lcs = longestCommonSubstr(line, ec);
+        if (lcs >= 3 && (!best || lcs > best.len)) {
+          best = { len: lcs, code: r.code };
+        }
       }
     }
     if (best) {
