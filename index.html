@@ -1477,38 +1477,34 @@
     }
   }
 
-  /* 相似取件码提醒：输入的每行取件码与已有记录有3位以上连续数字重合时提示 */
+  /* 相似取件码提醒：按横杠位置逐段精确匹配，前对前、后对后，不交叉；整段相同才提醒 */
   function updateSimBadge() {
     const badge = $('simBadge');
     if (!badge) return;
     const raw = $('inCode').value.trim();
-    // 拆出所有有效行，再按横杠分段，逐段匹配（不跨段）
-    const inputSegs = [];
-    raw.split(/\r?\n|;/).forEach(function(s) {
-      s.trim().replace(/-+$/g, '').split('-').forEach(function(seg) {
-        if (seg.length >= 3) inputSegs.push(seg);
-      });
-    });
-    if (inputSegs.length === 0) { badge.style.display = 'none'; return; }
+    // 拆出所有有效行，每行按横杠分段
+    const inputLines = raw.split(/\r?\n|;/).map(function(s) {
+      return s.trim().replace(/-+$/g, '').split('-').filter(Boolean);
+    }).filter(function(segs) { return segs.length > 0; });
+    if (inputLines.length === 0) { badge.style.display = 'none'; return; }
     const isSend = curType === 'send';
     const active = records.filter(r => !r.deleted && (isSend ? r.type === 'send' : r.type !== 'send'));
     let best = null;
-    for (const inSeg of inputSegs) {
+    for (const inSegs of inputLines) {
       for (const r of active) {
-        const code = r.code || '';
-        // 按横杠分段，只在每段内部匹配，不跨段
-        const segments = code.split('-').filter(s => s.length >= 3);
-        for (const seg of segments) {
-          const lcs = longestCommonSubstr(inSeg, seg);
-          if (lcs >= 3 && (!best || lcs > best.len)) {
-            best = { len: lcs, code: r.code };
+        const exSegs = (r.code || '').split('-').filter(Boolean);
+        // 按位置逐段比较：前对前、后对后，不交叉，整段相同才提醒
+        const minLen = Math.min(inSegs.length, exSegs.length);
+        for (let i = 0; i < minLen; i++) {
+          if (inSegs[i] === exSegs[i] && inSegs[i].length >= 3) {
+            if (!best) best = { code: r.code, seg: inSegs[i] };
           }
         }
       }
     }
     if (best) {
       badge.style.display = 'inline-block';
-      badge.textContent = '⚠️ 可能重复！与已有 ' + best.code + ' 有' + best.len + '位相同，点击查看';
+      badge.textContent = '⚠️ 可能重复！与已有 ' + best.code + ' 的「' + best.seg + '」相同，点击查看';
       badge.onclick = function() { $('inCode').value = best.code + '\n'; formatCodeLines(false); updateBatchUI(); };
     } else {
       badge.style.display = 'none';
