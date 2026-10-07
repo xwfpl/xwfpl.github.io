@@ -1482,16 +1482,16 @@
     const raw = $('inCode').value.trim();
     // 取第一行有效内容做匹配
     const firstLine = raw.split(/\r?\n|;/)[0].trim().replace(/-+$/g, '').replace(/-/g, '');
-    if (firstLine.length < 5) { badge.style.display = 'none'; return; }
+    if (firstLine.length < 4) { badge.style.display = 'none'; return; }
     const isSend = curType === 'send';
     const active = records.filter(r => !r.deleted && (isSend ? r.type === 'send' : r.type !== 'send'));
     let best = null;
     for (const r of active) {
       const ec = (r.code || '').replace(/-/g, '');
-      if (ec.length < 5) continue;
+      if (ec.length < 4) continue;
       // 求最长连续公共子串
       const lcs = longestCommonSubstr(firstLine, ec);
-      if (lcs >= 5 && (!best || lcs > best.len)) {
+      if (lcs >= 3 && (!best || lcs > best.len)) {
         best = { len: lcs, code: r.code };
       }
     }
