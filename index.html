@@ -310,6 +310,8 @@
   .code-hint b { color: var(--primary-dark); font-weight: 800; }
   .batch-badge { display: none; flex-shrink: 0; background: #e8f3ff; color: var(--primary-dark);
     font-weight: 800; font-size: 11px; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+  .sim-badge { display: none; flex-shrink: 0; background: #fff3e0; color: #c4500c;
+    font-weight: 700; font-size: 11px; border-radius: 999px; padding: 2px 9px; white-space: nowrap; cursor: pointer; }
   /* 多行取件码输入框：回车换行、可滚到多条，整体略高以提示可多行 */
   #inCode { resize: none; height: 60px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
   #inCode::-webkit-scrollbar { width: 4px; }
@@ -574,7 +576,7 @@
       <label>取件码 / 单号<span class="req">*</span></label>
       <textarea id="inCode" rows="1" placeholder="" autocomplete="off" enterkeyhint="enter"></textarea>
       <div class="err">取件码不能为空哦</div>
-      <div class="code-hint"><span class="batch-badge" id="batchBadge"></span></div>
+      <div class="code-hint"><span class="batch-badge" id="batchBadge"></span><span class="sim-badge" id="simBadge"></span></div>
     </div>
     <div class="field" id="fieldLoc">
       <label class="loc-label"><span>存放地点</span><button class="loc-manage" id="btnPlaces" type="button">⚙️ 管理</button></label>
@@ -1446,6 +1448,7 @@
     $('inNote').value = rec ? rec.note || '' : '';
     $('fCode').classList.remove('invalid');
     updateBatchUI();
+    updateSimBadge();
     syncLocTags();
     syncRecipientTags();
     $('formMask').classList.add('show');
@@ -1470,6 +1473,53 @@
       badge.style.display = n > 0 ? 'inline-block' : 'none';
       badge.textContent = n > 0 ? '将录入 ' + n + ' 条' : '';
     }
+  }
+
+  /* 相似取件码提醒：输入超过4位且与已有记录有4位以上连续数字重合时提示 */
+  function updateSimBadge() {
+    const badge = $('simBadge');
+    if (!badge) return;
+    const raw = $('inCode').value.trim();
+    // 取第一行有效内容做匹配
+    const firstLine = raw.split(/\r?\n|;/)[0].trim().replace(/-+$/g, '').replace(/-/g, '');
+    if (firstLine.length < 5) { badge.style.display = 'none'; return; }
+    const isSend = curType === 'send';
+    const active = records.filter(r => !r.deleted && (isSend ? r.type === 'send' : r.type !== 'send'));
+    let best = null;
+    for (const r of active) {
+      const ec = (r.code || '').replace(/-/g, '');
+      if (ec.length < 5) continue;
+      // 求最长连续公共子串
+      const lcs = longestCommonSubstr(firstLine, ec);
+      if (lcs >= 5 && (!best || lcs > best.len)) {
+        best = { len: lcs, code: r.code };
+      }
+    }
+    if (best) {
+      badge.style.display = 'inline-block';
+      badge.textContent = '⚠ 与已有 ' + best.code + ' 有' + best.len + '位相同';
+      badge.onclick = function() { $('inCode').value = best.code + '\n'; formatCodeLines(false); updateBatchUI(); };
+    } else {
+      badge.style.display = 'none';
+      badge.onclick = null;
+    }
+  }
+  // 最长连续公共子串
+  function longestCommonSubstr(a, b) {
+    if (!a || !b) return 0;
+    const m = a.length, n = b.length;
+    let max = 0;
+    const dp = Array(n + 1).fill(0);
+    for (let i = 1; i <= m; i++) {
+      let prev = 0;
+      for (let j = 1; j <= n; j++) {
+        const tmp = dp[j];
+        if (a[i - 1] === b[j - 1]) { dp[j] = prev + 1; if (dp[j] > max) max = dp[j]; }
+        else dp[j] = 0;
+        prev = tmp;
+      }
+    }
+    return max;
   }
 
   /* 取件码框：把输入的多行内容拆成多个取件码（新增模式可一次录多条）。
@@ -1626,6 +1676,7 @@
     formatCodeLines(false);                            // 打满4位即时补横杠
     $('fCode').classList.remove('invalid');
     updateBatchUI();
+    updateSimBadge();
   });
   $('inCode').addEventListener('blur', () => { clearTimeout(fmtTimer); formatCodeLines(true); });
   $('inCode').addEventListener('keydown', e => {
