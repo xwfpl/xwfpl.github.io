@@ -1493,7 +1493,7 @@
         const ec = (r.code || '').replace(/-/g, '');
         if (ec.length < 4) continue;
         const lcs = longestCommonSubstr(line, ec);
-        if (lcs >= 3 && (!best || lcs > best.len)) {
+        if (lcs >= 4 && (!best || lcs > best.len)) {
           best = { len: lcs, code: r.code };
         }
       }
