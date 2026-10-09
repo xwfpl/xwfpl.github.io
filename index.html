@@ -318,6 +318,14 @@
   #inCode { resize: none; height: 80px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
   #inCode::-webkit-scrollbar { width: 4px; }
   #inCode::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+  .code-rows { margin-top: 6px; max-height: 200px; overflow-y: auto; }
+  .code-row { display: flex; align-items: center; gap: 6px; padding: 5px 8px; margin-bottom: 4px;
+    background: #fafafa; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+  .code-row .cr-code { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .code-row .cr-loc-tags { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 0; }
+  .code-row .cr-tag { font-size: 11px; padding: 2px 7px; border-radius: 5px; white-space: nowrap;
+    background: #f0f0f0; color: #666; cursor: pointer; }
+  .code-row .cr-tag.active { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; }
   .quick-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
   .quick-tag {
     font-size: 12px; padding: 5px 11px; border-radius: 999px;
@@ -591,11 +599,10 @@
     </div>
     <div class="field" id="fCode">
       <label>取件码 / 单号<span class="req">*</span></label>
-      <textarea id="inCode" rows="2" placeholder="每行一个取件码
-多地点格式：地点:取件码
-如：富乐新苑正门:08781169" autocomplete="off"></textarea>
+      <textarea id="inCode" rows="2" placeholder="每行一个取件码，可输多个" autocomplete="off"></textarea>
       <div class="err">取件码不能为空哦</div>
       <div class="code-hint"><span class="batch-badge" id="batchBadge"></span><span class="sim-badge" id="simBadge"></span></div>
+      <div class="code-rows" id="codeRows"></div>
     </div>
     <div class="field" id="fieldLoc">
       <label class="loc-label"><span>存放地点</span><button class="loc-manage" id="btnPlaces" type="button">⚙️ 管理</button></label>
@@ -1497,13 +1504,48 @@
     $('formMask').classList.add('show');
     setTimeout(() => { $('inCode').focus(); adjustFormModalForKeyboard(); }, 260);
   }
-  function closeForm() { $('formMask').classList.remove('show'); resetFormModal(); }
+  function closeForm() { $('formMask').classList.remove('show'); resetFormModal(); rowLocations = {}; $('codeRows').innerHTML = ''; }
 
   /* 取件码框当前有效的取件码条数（按换行/分号拆分，忽略空行；逗号分隔也拆） */
   function codeLinesCount() {
     return parseCodes($('inCode').value).length;
   }
-  /* 多行录入提示：新增时实时显示“将录入 N 条”；编辑时只显示单条提示 */
+
+  /* 逐行地点选择：输入多条取件码后，每条单独选地点 */
+  let rowLocations = {};
+  function renderCodeRows() {
+    const box = $('codeRows');
+    if (!box) return;
+    const isSend = curType === 'send';
+    if (isSend || editingId) { box.innerHTML = ''; return; }
+    const parsed = parseCodes($('inCode').value);
+    if (parsed.length <= 1) { box.innerHTML = ''; return; }
+    const validCodes = parsed.map(p => p.code);
+    Object.keys(rowLocations).forEach(k => { if (!validCodes.includes(k)) delete rowLocations[k]; });
+    const defaultLoc = $('inLocation').value.trim() || (places[0] || '');
+    let html = '';
+    parsed.forEach(p => {
+      const curLoc = rowLocations[p.code] || p.loc || defaultLoc;
+      if (!rowLocations[p.code]) rowLocations[p.code] = curLoc;
+      let tagsHtml = places.map(pl => {
+        const active = curLoc === pl;
+        return '<span class="cr-tag' + (active ? ' active' : '') + '" data-cr-code="' + esc(p.code) + '" data-cr-loc="' + esc(pl) + '">' + esc(pl) + '</span>';
+      }).join('');
+      html += '<div class="code-row"><span class="cr-code">' + esc(p.code) + '</span><div class="cr-loc-tags">' + tagsHtml + '</div></div>';
+    });
+    box.innerHTML = html;
+  }
+  document.addEventListener('click', function(e) {
+    const tag = e.target.closest('.cr-tag');
+    if (!tag) return;
+    const code = tag.dataset.crCode;
+    const loc = tag.dataset.crLoc;
+    rowLocations[code] = loc;
+    const row = tag.closest('.code-row');
+    if (row) row.querySelectorAll('.cr-tag').forEach(t => t.classList.toggle('active', t === tag));
+  });
+
+  /* 多行录入提示：新增时实时显示"将录入 N 条"；编辑时只显示单条提示 */
   function updateBatchUI() {
     const isAdd = !editingId;
     const hint = $('batchHint'), badge = $('batchBadge');
@@ -1516,6 +1558,7 @@
       badge.style.display = n > 0 ? 'inline-block' : 'none';
       badge.textContent = n > 0 ? '将录入 ' + n + ' 条' : '';
     }
+    renderCodeRows();
   }
 
   /* 相似取件码提醒：按横杠位置逐段精确匹配，前对前、后对后，不交叉；整段相同才提醒 */
@@ -1617,12 +1660,12 @@
       attention: $('inAttention').checked
     };
     const defaultLoc = isSend ? '' : $('inLocation').value.trim();
-    // 为每条取件码构建数据（地点可逐条覆盖）
+    // 为每条取件码构建数据（地点优先用逐行选择的，其次用冒号格式的，最后用默认）
     const codes = parsed.map(p => p.code);
     const items = parsed.map(p => ({
       code: p.code,
       data: Object.assign({}, baseData, {
-        location: isSend ? '' : (p.loc !== null ? p.loc : defaultLoc)
+        location: isSend ? '' : (rowLocations[p.code] || p.loc || defaultLoc)
       })
     }));
     if (editingId) {
