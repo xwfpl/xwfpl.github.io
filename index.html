@@ -747,37 +747,51 @@
   function formatCodeLines(all) {
     const el = $('inCode');
     if (!el) return;
-    if (!all) {                                       // 只整理光标所在行，光标跟着走
+    if (!all) {
       var pos = (el.selectionStart != null) ? el.selectionStart : el.value.length;
       const before = el.value.slice(0, pos);
       const idx = before.split('\n').length - 1;
       const lines = el.value.split('\n');
       const line = lines[idx];
-      // 如果行中已有横杠（用户手动输入），不自动格式化
       if (line.indexOf('-') !== -1) return;
+      // 多地点格式：分离冒号前后的内容，只格式化冒号后的数字
+      var colonPos = line.search(/[：:]/);
+      var prefix = '';
+      var digitsPart = line;
+      if (colonPos >= 0) {
+        prefix = line.substring(0, colonPos + 1);
+        digitsPart = line.substring(colonPos + 1);
+      }
       const inLine = before.split('\n').pop().length;
-      const digitsBefore = line.slice(0, inLine).replace(/-/g, '').length;
-      const digits = line.replace(/-/g, '');
-      if (!/^\d+$/.test(digits)) return;                         // 只处理纯数字行
+      const digitsBefore = digitsPart.slice(0, Math.max(0, inLine - prefix.length)).replace(/-/g, '').length;
+      const digits = digitsPart.replace(/-/g, '');
+      if (!/^\d+$/.test(digits)) return;
       const grouped = dashGroup(digits, true);
-      if (grouped === line) return;
-      let cnt = 0, np = 0;                            // 按“光标前有几个数字”定位新光标
+      if (grouped === digitsPart) return;
+      let cnt = 0, np = 0;
       for (; np < grouped.length && cnt < digitsBefore; np++) if (/\d/.test(grouped[np])) cnt++;
       while (np < grouped.length && !/\d/.test(grouped[np])) np++;
-      lines[idx] = grouped;
+      lines[idx] = prefix + grouped;
       el.value = lines.join('\n');
-      var newPos = lines.slice(0, idx).join('\n').length + (idx ? 1 : 0) + np;
+      var newPos = lines.slice(0, idx).join('\n').length + (idx ? 1 : 0) + prefix.length + np;
       try { el.setSelectionRange(newPos, newPos); } catch(e2) {}
-    } else {                                          // 失焦/回车：整理所有行，不留悬空横杠
+    } else {
       const lines = el.value.split('\n');
       let changed = false;
       for (let i = 0; i < lines.length; i++) {
-        // 如果行中已有横杠（用户手动输入），保持原样
         if (lines[i].indexOf('-') !== -1) continue;
-        const d = lines[i].replace(/-/g, '');
+        // 多地点格式：分离冒号前后
+        var ci = lines[i].search(/[：:]/);
+        var pre = '';
+        var dPart = lines[i];
+        if (ci >= 0) {
+          pre = lines[i].substring(0, ci + 1);
+          dPart = lines[i].substring(ci + 1);
+        }
+        const d = dPart.replace(/-/g, '');
         if (d && /^\d+$/.test(d) && d.length <= 8) {
           const g = dashGroup(d, false);
-          if (g !== lines[i]) { lines[i] = g; changed = true; }
+          if (g !== dPart) { lines[i] = pre + g; changed = true; }
         }
       }
       if (changed) el.value = lines.join('\n');
@@ -1484,9 +1498,9 @@
   }
   function closeForm() { $('formMask').classList.remove('show'); resetFormModal(); }
 
-  /* 取件码框当前有效的取件码条数（按换行拆分，忽略空行与纯空格） */
+  /* 取件码框当前有效的取件码条数（按换行/分号拆分，忽略空行；逗号分隔也拆） */
   function codeLinesCount() {
-    return $('inCode').value.split(/\n/).map(s => s.trim()).filter(Boolean).length;
+    return parseCodes($('inCode').value).length;
   }
   /* 多行录入提示：新增时实时显示“将录入 N 条”；编辑时只显示单条提示 */
   function updateBatchUI() {
