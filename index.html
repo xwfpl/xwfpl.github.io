@@ -318,6 +318,11 @@
   #inCode { resize: none; height: 80px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
   #inCode::-webkit-scrollbar { width: 4px; }
   #inCode::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+  .code-input-wrap { position: relative; }
+  .code-input-wrap .loc-btn { position: absolute; right: 6px; bottom: 6px;
+    background: var(--primary-light); border: none; border-radius: 7px;
+    font-size: 16px; padding: 3px 8px; color: var(--primary-dark); opacity: .55; }
+  .code-input-wrap .loc-btn:active { opacity: 1; }
   .quick-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
   .quick-tag {
     font-size: 12px; padding: 5px 11px; border-radius: 999px;
@@ -591,7 +596,10 @@
     </div>
     <div class="field" id="fCode">
       <label>取件码 / 单号<span class="req">*</span></label>
-      <textarea id="inCode" rows="2" placeholder="每行一个取件码" autocomplete="off"></textarea>
+      <div class="code-input-wrap">
+        <textarea id="inCode" rows="2" placeholder="每行一个取件码" autocomplete="off"></textarea>
+        <button class="loc-btn" id="btnLocInsert" type="button" title="给当前行加地点">📍</button>
+      </div>
       <div class="err">取件码不能为空哦</div>
       <div class="code-hint"><span class="batch-badge" id="batchBadge"></span><span class="sim-badge" id="simBadge"></span></div>
     </div>
@@ -1757,6 +1765,32 @@
         el.dispatchEvent(new Event('input', { bubbles: true }));
       }
     }
+  });
+
+  // 📍按钮：给光标所在行插入地点前缀，然后滚动到地点标签区引导选择
+  $('btnLocInsert').addEventListener('click', function() {
+    var el = $('inCode');
+    var pos = el.selectionStart != null ? el.selectionStart : el.value.length;
+    var before = el.value.slice(0, pos);
+    var after = el.value.slice(pos);
+    var lineStart = before.lastIndexOf('\n') + 1;
+    var lineContent = before.slice(lineStart).trim();
+    // 如果该行已有冒号前缀（已加过地点），跳过
+    if (lineContent.indexOf(':') >= 0 || lineContent.indexOf('：') >= 0) {
+      // 直接聚焦地点标签区
+      $('inLocation').focus();
+      $('inLocation').select();
+      return;
+    }
+    // 在行首插入 "地点:" 让用户选地点
+    var insert = '地点:';
+    el.value = el.value.slice(0, lineStart) + insert + el.value.slice(lineStart);
+    var newPos = lineStart + insert.length - 1;
+    try { el.setSelectionRange(newPos, newPos); } catch(e2) {}
+    el.focus();
+    // 滚动到地点标签区
+    var locField = $('fieldLoc');
+    if (locField) locField.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
   // 固定地点勾选
