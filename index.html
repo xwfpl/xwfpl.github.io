@@ -323,6 +323,13 @@
     background: var(--primary-light); border: none; border-radius: 7px;
     font-size: 16px; padding: 3px 8px; color: var(--primary-dark); opacity: .55; }
   .code-input-wrap .loc-btn:active { opacity: 1; }
+  .loc-pop { position: absolute; right: 6px; bottom: 40px; z-index: 10;
+    background: #fff; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.12); display: none;
+    max-width: 260px; }
+  .loc-pop.show { display: block; }
+  .loc-pop .lp-tag { display: inline-block; font-size: 12px; padding: 5px 10px; margin: 2px;
+    border-radius: 999px; background: #f2f3f5; color: var(--text-2); border: 1px solid var(--border); }
   .quick-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
   .quick-tag {
     font-size: 12px; padding: 5px 11px; border-radius: 999px;
@@ -598,7 +605,8 @@
       <label>取件码 / 单号<span class="req">*</span></label>
       <div class="code-input-wrap">
         <textarea id="inCode" rows="2" placeholder="每行一个取件码" autocomplete="off"></textarea>
-        <button class="loc-btn" id="btnLocInsert" type="button" title="给当前行加地点">📍</button>
+        <button class="loc-btn" id="btnLocInsert" type="button">📍</button>
+        <div class="loc-pop" id="locPop"></div>
       </div>
       <div class="err">取件码不能为空哦</div>
       <div class="code-hint"><span class="batch-badge" id="batchBadge"></span><span class="sim-badge" id="simBadge"></span></div>
@@ -1767,30 +1775,49 @@
     }
   });
 
-  // 📍按钮：给光标所在行插入地点前缀，然后滚动到地点标签区引导选择
-  $('btnLocInsert').addEventListener('click', function() {
+  // 📍按钮：弹出地点列表，点选后插入到当前行
+  $('btnLocInsert').addEventListener('click', function(e) {
+    e.stopPropagation();
+    var pop = $('locPop');
+    if (pop.classList.contains('show')) { pop.classList.remove('show'); return; }
+    var tagsHtml = places.map(function(pl) {
+      return '<span class="lp-tag" data-lp-loc="' + esc(pl) + '">' + esc(pl) + '</span>';
+    }).join('');
+    pop.innerHTML = tagsHtml;
+    pop.classList.add('show');
+  });
+  // 点击地点标签：插入到光标所在行首
+  document.addEventListener('click', function(e) {
+    var tag = e.target.closest('.lp-tag');
+    if (!tag) return;
+    var loc = tag.dataset.lpLoc;
     var el = $('inCode');
     var pos = el.selectionStart != null ? el.selectionStart : el.value.length;
     var before = el.value.slice(0, pos);
-    var after = el.value.slice(pos);
     var lineStart = before.lastIndexOf('\n') + 1;
-    var lineContent = before.slice(lineStart).trim();
-    // 如果该行已有冒号前缀（已加过地点），跳过
-    if (lineContent.indexOf(':') >= 0 || lineContent.indexOf('：') >= 0) {
-      // 直接聚焦地点标签区
-      $('inLocation').focus();
-      $('inLocation').select();
-      return;
+    var lineContent = el.value.slice(lineStart).split('\n')[0];
+    // 如果该行已有地点前缀，替换它
+    var colonIdx = lineContent.search(/[：:]/);
+    if (colonIdx >= 0) {
+      var lineEnd = lineStart + lineContent.length;
+      el.value = el.value.slice(0, lineStart) + loc + ':' + el.value.slice(lineStart + colonIdx + 1);
+      try { el.setSelectionRange(lineStart + loc.length + 1, lineStart + loc.length + 1); } catch(e2) {}
+    } else {
+      var insert = loc + ':';
+      el.value = el.value.slice(0, lineStart) + insert + el.value.slice(lineStart);
+      var newPos = lineStart + insert.length;
+      try { el.setSelectionRange(newPos, newPos); } catch(e2) {}
     }
-    // 在行首插入 "地点:" 让用户选地点
-    var insert = '地点:';
-    el.value = el.value.slice(0, lineStart) + insert + el.value.slice(lineStart);
-    var newPos = lineStart + insert.length - 1;
-    try { el.setSelectionRange(newPos, newPos); } catch(e2) {}
+    $('locPop').classList.remove('show');
     el.focus();
-    // 滚动到地点标签区
-    var locField = $('fieldLoc');
-    if (locField) locField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    formatCodeLines(false);
+    updateBatchUI();
+  });
+  // 点其他地方关闭弹窗
+  document.addEventListener('click', function(e) {
+    var pop = $('locPop');
+    if (!pop) return;
+    if (!e.target.closest('.code-input-wrap')) pop.classList.remove('show');
   });
 
   // 固定地点勾选
