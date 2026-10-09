@@ -1631,12 +1631,14 @@
       attention: $('inAttention').checked
     };
     const defaultLoc = isSend ? '' : $('inLocation').value.trim();
-    // 为每条取件码构建数据（地点优先用逐行选择的，其次用冒号格式的，最后用默认）
+    // 为每条取件码构建数据：有地点前缀的用前缀，没有的用下方默认地点
+    // 但如果存在任一行有地点前缀，没前缀的行不继承默认地点（留空）
+    const hasAnyLocOverride = parsed.some(p => p.loc !== null);
     const codes = parsed.map(p => p.code);
     const items = parsed.map(p => ({
       code: p.code,
       data: Object.assign({}, baseData, {
-        location: isSend ? '' : (p.loc || defaultLoc)
+        location: isSend ? '' : (p.loc !== null ? p.loc : (hasAnyLocOverride ? '' : defaultLoc))
       })
     }));
     if (editingId) {
