@@ -591,7 +591,8 @@
     </div>
     <div class="field" id="fCode">
       <label>取件码 / 单号<span class="req">*</span></label>
-      <textarea id="inCode" rows="1" placeholder="" autocomplete="off" enterkeyhint="enter"></textarea>
+      <textarea id="inCode" rows="1" placeholder="取件码，每行一个
+多地点格式：地点:取件码" autocomplete="off" enterkeyhint="enter"></textarea>
       <div class="err">取件码不能为空哦</div>
       <div class="code-hint"><span class="batch-badge" id="batchBadge"></span><span class="sim-badge" id="simBadge"></span></div>
     </div>
@@ -1334,12 +1335,15 @@
       const displayName = curTab === 'err'
         ? (isSendGroup ? '寄件码（错误）' : (g.name || '未指定地点'))
         : (isSendGroup ? '寄件码' : (g.name || '未指定地点'));
+      const attCnt = g.items.filter(r => r.attention).length;
+      const attBadge = attCnt ? '<span class="att-badge">🔥 ' + attCnt + '</span>' : '';
       return `<div class="group">
         <div class="group-head ${isSendGroup ? 'send-head' : ''}" data-group="${esc(g.name)}">
           <div class="g-left">
             <span class="g-arrow">${isCollapsed ? '▸' : '▾'}</span>
             <span class="g-icon">${isSendGroup ? '📮' : (g.name ? '📍' : '❔')}</span>
             <span class="g-name">${esc(displayName)}</span>
+            ${attBadge}
             <span class="g-cnt ${isSendGroup ? 'send-cnt' : ''}">${cntText}</span>
           </div>
         </div>
@@ -1558,16 +1562,26 @@
     const out = [];
     String(raw).split(/\r?\n|;/).forEach(seg => {
       let s = seg.trim();
-      // 只去掉末尾的悬空横杠（自动补的提示杠），保留中间手动输入的横杠
       s = s.replace(/-+$/g, '');
-      if (s) {
-        // 如果已有横杠，保持原样；否则用 formatCode 格式化纯数字
-        if (s.indexOf('-') === -1) {
-          out.push(formatCode(s));
-        } else {
-          out.push(s);
-        }
+      if (!s) return;
+      // 支持多地点格式：地点:取件码 或 地点：取件码
+      let locOverride = null;
+      const colonMatch = s.match(/^([^:：]+)[：:]\s*(.+)$/);
+      if (colonMatch) {
+        locOverride = colonMatch[1].trim();
+        s = colonMatch[2].trim();
       }
+      // 支持逗号分隔多个取件码
+      s.split(/[,，]/).forEach(c => {
+        c = c.trim().replace(/-+$/g, '');
+        if (c) {
+          if (c.indexOf('-') === -1) {
+            out.push({ code: formatCode(c), loc: locOverride });
+          } else {
+            out.push({ code: c, loc: locOverride });
+          }
+        }
+      });
     });
     return out;
   }
@@ -1576,23 +1590,30 @@
      编辑模式：把第一行作为该条新取件码（只改这一条）。成功则关闭弹窗。 */
   function saveForm() {
     const isSend = curType === 'send';
-    const codes = parseCodes($('inCode').value);
-    if (codes.length === 0) {
+    const parsed = parseCodes($('inCode').value);
+    if (parsed.length === 0) {
       $('fCode').classList.add('invalid');
       $('inCode').focus();
       return;
     }
-    const data = {
+    const baseData = {
       recipient: $('inRecipient').value.trim(),
-      location: isSend ? '' : $('inLocation').value.trim(),
       note: $('inNote').value.trim(),
       attention: $('inAttention').checked
     };
+    const defaultLoc = isSend ? '' : $('inLocation').value.trim();
+    // 为每条取件码构建数据（地点可逐条覆盖）
+    const codes = parsed.map(p => p.code);
+    const items = parsed.map(p => ({
+      code: p.code,
+      data: Object.assign({}, baseData, {
+        location: isSend ? '' : (p.loc !== null ? p.loc : defaultLoc)
+      })
+    }));
     if (editingId) {
-      // 编辑：只改这一条（取第一个取件码，多余行忽略）
       const r = records.find(x => x.id === editingId);
       if (r) {
-        Object.assign(r, data, { code: codes[0] });
+        Object.assign(r, items[0].data, { code: items[0].code });
         if (isSend) r.type = 'send'; else delete r.type;
         touch(r);
       }
@@ -1603,59 +1624,57 @@
     // —— 检查重复取件码 ——
     const activeRecords = records.filter(r => !r.deleted);
     const dupList = [];
-    codes.forEach(code => {
-      const found = activeRecords.find(r => r.code === code && r.type === (isSend ? 'send' : undefined));
-      if (found) dupList.push(code);
+    items.forEach(it => {
+      const found = activeRecords.find(r => r.code === it.code && r.type === (isSend ? 'send' : undefined));
+      if (found) dupList.push(it.code);
     });
     if (dupList.length > 0) {
       const msg = dupList.length === 1
         ? '取件码 ' + dupList[0] + ' 已存在，要怎么处理？'
         : '有 ' + dupList.length + ' 个取件码已存在（' + dupList.slice(0, 3).join('、') + (dupList.length > 3 ? '…' : '') + '），要怎么处理？';
       confirmAskOverwrite(msg,
-        function() { doSaveCodes(codes, data, isSend); },
-        function() { doOverwriteCodes(codes, data, isSend); }
+        function() { doSaveCodes(items, isSend); },
+        function() { doOverwriteCodes(items, isSend); }
       );
       return;
     }
-    doSaveCodes(codes, data, isSend);
+    doSaveCodes(items, isSend);
   }
 
-  function doOverwriteCodes(codes, data, isSend) {
-    codes.forEach(code => {
-      // 找到已有的同类型记录并覆盖
-      const existing = records.find(r => !r.deleted && r.code === code && r.type === (isSend ? 'send' : undefined));
+  function doOverwriteCodes(items, isSend) {
+    items.forEach(it => {
+      const existing = records.find(r => !r.deleted && r.code === it.code && r.type === (isSend ? 'send' : undefined));
       if (existing) {
-        Object.assign(existing, data, { code: code });
+        Object.assign(existing, it.data, { code: it.code });
         touch(existing);
       } else {
-        // 不存在则新增
         const now = Date.now();
         const rec = Object.assign(
           { id: uid(), createdAt: now, takenAt: null, updatedAt: now },
-          data, { code }
+          it.data, { code: it.code }
         );
         if (isSend) rec.type = 'send';
         records.push(rec);
       }
     });
     saveLocal(); closeForm(); render(); scheduleSync();
-    const n = codes.length;
+    const n = items.length;
     if (n > 1) toast('已覆盖 ' + n + ' 条 ' + (isSend ? '寄件码 📮' : '取件码 📦'));
     else toast('已覆盖更新 📦');
   }
 
-  function doSaveCodes(codes, data, isSend) {
+  function doSaveCodes(items, isSend) {
     const now = Date.now();
-    codes.forEach(code => {
+    items.forEach(it => {
       const rec = Object.assign(
         { id: uid(), createdAt: now, takenAt: null, updatedAt: now },
-        data, { code }
+        it.data, { code: it.code }
       );
       if (isSend) rec.type = 'send';
       records.push(rec);
     });
     saveLocal(); closeForm(); render(); scheduleSync();
-    const n = codes.length;
+    const n = items.length;
     if (n > 1) toast('已记下 ' + n + ' 条 ' + (isSend ? '寄件码 📮' : '取件码 📦'));
     else toast(isSend ? '已记下，等快递员来收 📮' : '已记下，记得去取件哦 📦');
   }
