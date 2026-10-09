@@ -1631,16 +1631,19 @@
       attention: $('inAttention').checked
     };
     const defaultLoc = isSend ? '' : $('inLocation').value.trim();
-    // 为每条取件码构建数据：有地点前缀的用前缀，没有的用下方默认地点
-    // 但如果存在任一行有地点前缀，没前缀的行不继承默认地点（留空）
-    const hasAnyLocOverride = parsed.some(p => p.loc !== null);
+    // 为每条取件码构建数据：有地点前缀的用前缀，没有的继承上一行的地点
+    let lastLoc = defaultLoc;
     const codes = parsed.map(p => p.code);
-    const items = parsed.map(p => ({
-      code: p.code,
-      data: Object.assign({}, baseData, {
-        location: isSend ? '' : (p.loc !== null ? p.loc : (hasAnyLocOverride ? '' : defaultLoc))
-      })
-    }));
+    const items = parsed.map(p => {
+      const loc = p.loc !== null ? p.loc : lastLoc;
+      lastLoc = loc;
+      return {
+        code: p.code,
+        data: Object.assign({}, baseData, {
+          location: isSend ? '' : loc
+        })
+      };
+    });
     if (editingId) {
       const r = records.find(x => x.id === editingId);
       if (r) {
