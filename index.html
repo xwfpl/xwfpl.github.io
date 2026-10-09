@@ -340,6 +340,21 @@
   }
   .btn-submit:active { transform: scale(.98); }
 
+  /* ===== 特别注意 ===== */
+  #fieldAttention { margin-top: -2px; }
+  .att-label { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+    font-size: 14px; font-weight: 700; color: #b0240f; }
+  .att-label input { width: 18px; height: 18px; accent-color: #e8462a; }
+  .att-badge { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0;
+    background: #fff1f0; color: #cf1322; font-weight: 800; font-size: 11px;
+    border: 1.5px solid #ffa39e; border-radius: 6px; padding: 2px 6px; white-space: nowrap;
+    animation: attPulse 1.8s ease-in-out infinite; }
+  @keyframes attPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(232,70,42,0); }
+    50% { box-shadow: 0 0 4px 2px rgba(232,70,42,0.25); }
+  }
+  .card.attention { border-color: #ffa39e; background: #fff8f7; }
+
   /* ===== 地点管理 ===== */
   .loc-label { display: flex; align-items: center; justify-content: space-between; }
   .loc-manage {
@@ -593,6 +608,9 @@
     <div class="field" id="fieldNote" style="display:none">
       <label>备注</label>
       <input type="text" id="inNote" placeholder="" autocomplete="off">
+    </div>
+    <div class="field" id="fieldAttention">
+      <label class="att-label"><input type="checkbox" id="inAttention"><span>⭐ 特别注意</span></label>
     </div>
     <button class="btn-submit" id="btnSave">提交</button>
   </div>
@@ -1335,6 +1353,7 @@
     const taken = !!r.takenAt;
     const isErr = !!r.errAt;
     const isSend = r.type === 'send';
+    const att = !!r.attention;
     const metaRows = [];
     // 录入天数（显示在按钮旁边）
     const days = daysSince(r.createdAt || r.updatedAt);
@@ -1356,12 +1375,13 @@
     if (r.recipient) subText += `<div class="code-recipient">${esc(r.recipient)}</div>`;
     if (r.note) subText += `<div class="code-note">${esc(r.note)}</div>`;
     const recLabel = subText ? `<div class="code-sub">${subText}</div>` : '';
-    return `<div class="card ${isErr ? 'err' : ''} ${taken ? 'taken' : ''} ${isSend ? 'send' : ''}" data-card="${r.id}">
+    const attBadge = att ? '<span class="att-badge">⭐ 特别注意</span>' : '';
+    return `<div class="card ${isErr ? 'err' : ''} ${taken ? 'taken' : ''} ${isSend ? 'send' : ''} ${att ? 'attention' : ''}" data-card="${r.id}">
       <div class="code-zone">
         <div class="code-main">
           ${dot}
           <div class="code-line">
-            <span class="code-value ${isErr ? 'err-code' : ''}">${esc(r.code)}</span>${recLabel}
+            <span class="code-value ${isErr ? 'err-code' : ''}">${esc(r.code)}</span>${attBadge}${recLabel}
           </div>
         </div>
         <div class="code-actions">
@@ -1448,6 +1468,7 @@
     $('inRecipient').value = rec ? rec.recipient || '' : (recipients[0] || '');
     $('inLocation').value = rec ? rec.location || '' : (places[0] || '');
     $('inNote').value = rec ? rec.note || '' : '';
+    $('inAttention').checked = rec ? !!rec.attention : false;
     $('fCode').classList.remove('invalid');
     updateBatchUI();
     updateSimBadge();
@@ -1563,7 +1584,8 @@
     const data = {
       recipient: $('inRecipient').value.trim(),
       location: isSend ? '' : $('inLocation').value.trim(),
-      note: $('inNote').value.trim()
+      note: $('inNote').value.trim(),
+      attention: $('inAttention').checked
     };
     if (editingId) {
       // 编辑：只改这一条（取第一个取件码，多余行忽略）
