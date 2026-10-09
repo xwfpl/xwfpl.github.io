@@ -678,6 +678,37 @@
   </div>
 </div>
 
+</div>
+
+<!-- 密码加密解锁 -->
+<div class="modal-mask" id="pwdMask">
+  <div class="modal" style="max-width:340px">
+    <div class="m-head">
+      <h3>🔒 数据加密</h3>
+    </div>
+    <div id="pwdSetupBox">
+      <div class="gh-field">
+        <label>设置加密密码</label>
+        <input type="password" id="pwdNew" placeholder="输入密码" autocomplete="off">
+      </div>
+      <div class="gh-field">
+        <label>确认密码</label>
+        <input type="password" id="pwdConfirm" placeholder="再次输入密码" autocomplete="off">
+      </div>
+      <div class="gh-info">ℹ️ 设置后云端数据将加密存储，新设备需密码才能查看。</div>
+      <button class="btn-submit" id="pwdSetBtn" style="margin-top:14px">设置密码并加密</button>
+    </div>
+    <div id="pwdLoginBox" style="display:none">
+      <div class="gh-field">
+        <label>输入密码解锁数据</label>
+        <input type="password" id="pwdInput" placeholder="输入密码" autocomplete="off">
+      </div>
+      <p id="pwdError" style="color:#e8462a;font-size:13px;display:none;margin:8px 0"></p>
+      <button class="btn-submit" id="pwdUnlockBtn" style="margin-top:14px">解锁</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- GitHub 设置 -->
@@ -1094,6 +1125,56 @@
     }
   }
 
+  /* ================= AES-GCM 数据加密 ================= */
+  const ENC_PWD_KEY = 'pickup_enc_pwd';
+  let encPwd = localStorage.getItem(ENC_PWD_KEY) || '';
+
+  function bufToB64(buf) {
+    var bytes = new Uint8Array(buf);
+    var s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function b64ToBuf(b64) {
+    var s = atob(b64);
+    var bytes = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
+    return bytes;
+  }
+  async function deriveKey(password, saltBytes) {
+    var enc = new TextEncoder();
+    var keyMaterial = await crypto.subtle.importKey(
+      'raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: saltBytes, iterations: 100000, hash: 'SHA-256' },
+      keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+    );
+  }
+  async function encryptObj(obj, password) {
+    var salt = crypto.getRandomValues(new Uint8Array(16));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var key = await deriveKey(password, salt);
+    var enc = new TextEncoder();
+    var plaintext = enc.encode(JSON.stringify(obj));
+    var ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, plaintext);
+    return JSON.stringify({ v: 2, salt: bufToB64(salt), iv: bufToB64(iv), data: bufToB64(ciphertext) });
+  }
+  async function decryptObj(jsonStr, password) {
+    var obj = JSON.parse(jsonStr);
+    if (!obj || obj.v !== 2 || !obj.data) return obj;
+    var salt = b64ToBuf(obj.salt);
+    var iv = b64ToBuf(obj.iv);
+    var key = await deriveKey(password, salt);
+    var ciphertext = b64ToBuf(obj.data);
+    var plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, ciphertext);
+    var dec = new TextDecoder();
+    return JSON.parse(dec.decode(plaintext));
+  }
+  function isEncrypted(jsonStr) {
+    try { var p = JSON.parse(jsonStr); return p && p.v === 2 && !!p.data; } catch(e) { return false; }
+  }
+
   async function apiGet() {
     var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
     var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 45000);
@@ -1102,11 +1183,24 @@
     var data = await res.json();
     var raw = data.content ? data.content.replace(/\n/g, '') : '';
     var content = raw ? base64ToUtf8(raw) : '{}';
-    var parsed = JSON.parse(content);
+    var parsed;
+    if (isEncrypted(content)) {
+      if (!encPwd) throw new Error('NEED_PASSWORD');
+      try { parsed = await decryptObj(content, encPwd); }
+      catch (e) { throw new Error('NEED_PASSWORD'); }
+    } else {
+      parsed = JSON.parse(content);
+    }
     return { records: parsed.records || [], places: parsed.places || [], deletedPlaces: parsed.deletedPlaces || [], recipients: parsed.recipients || [], deletedRecipients: parsed.deletedRecipients || [], _sha: data.sha };
   }
   async function apiPost(recs, sha) {
-    var jsonStr = JSON.stringify({ records: recs, places: places, deletedPlaces: deletedPlaces, recipients: recipients, deletedRecipients: deletedRecipients });
+    var payload = { records: recs, places: places, deletedPlaces: deletedPlaces, recipients: recipients, deletedRecipients: deletedRecipients };
+    var jsonStr;
+    if (encPwd) {
+      jsonStr = await encryptObj(payload, encPwd);
+    } else {
+      jsonStr = JSON.stringify(payload);
+    }
     var content = utf8ToBase64(jsonStr);
     var putUrl = ghApiBase() + '/contents/' + ghConfig.dataFile;
     var bodyObj = { message: 'sync pickup codes', content: content, branch: ghConfig.branch };
@@ -1140,8 +1234,9 @@
 
   async function syncNow(manual) {
     if (!ghConfig.token || ghConfig.mode === 'local') return;
-    releaseStuckSync();                 // 若上次同步卡死则解锁，避免永久无法同步
+    releaseStuckSync();
     if (syncing) return;
+    if (!encPwd && $('pwdMask').classList.contains('show')) return; // 密码弹窗中，跳过自动同步
     syncing = true; syncStartedAt = Date.now(); setSyncStatus('busy');
     try {
       var cloud = await apiGet();
@@ -1220,14 +1315,32 @@
       stopSyncWatchdog();
       if (manual) toast('已是最新，云端同步完成 ☁');
     } catch (e) {
+      var errMsg = String(e.message || e);
+      if (errMsg === 'NEED_PASSWORD') {
+        syncing = false; syncStartedAt = 0;
+        setSyncStatus('off');
+        var ptxt = $('syncText');
+        if (encPwd) {
+          // 密码错误：清除并提示
+          encPwd = '';
+          localStorage.removeItem(ENC_PWD_KEY);
+          if (ptxt) ptxt.textContent = '密码错误';
+          showPwdModal('unlock');
+          var errEl = $('pwdError');
+          if (errEl) { errEl.textContent = '密码错误，请重试'; errEl.style.display = ''; }
+        } else {
+          if (ptxt) ptxt.textContent = '需要密码解锁';
+          showPwdModal('unlock');
+        }
+        return;
+      }
       setSyncStatus('off');
-      var errMsg = String(e.message || e).substring(0, 120);
+      errMsg = errMsg.substring(0, 120);
       var txt = $('syncText');
       if (txt) txt.textContent = '错误: ' + errMsg.substring(0, 40);
       if (manual) toast('同步失败: ' + errMsg);
       if (!syncRetryTimer) {
         syncFails++;
-        // 指数退避：5秒、10秒、20秒、40秒...最多60秒
         var delay = Math.min(5000 * Math.pow(2, Math.min(syncFails - 1, 4)), 60000);
         syncRetryTimer = setTimeout(function() { syncRetryTimer = null; syncNow(false); }, delay);
       }
@@ -2148,17 +2261,102 @@
     syncNow(true);
   });
 
+  /* ================= 密码加密 ================= */
+  function showPwdModal(mode) {
+    var mask = $('pwdMask');
+    var setupBox = $('pwdSetupBox');
+    var loginBox = $('pwdLoginBox');
+    var errP = $('pwdError');
+    if (errP) { errP.style.display = 'none'; }
+    if (mode === 'setup') {
+      setupBox.style.display = '';
+      loginBox.style.display = 'none';
+    } else {
+      setupBox.style.display = 'none';
+      loginBox.style.display = '';
+    }
+    mask.classList.add('show');
+    setTimeout(function() {
+      var inp = mode === 'setup' ? $('pwdNew') : $('pwdInput');
+      if (inp) inp.focus();
+    }, 200);
+  }
+  function hidePwdModal() { $('pwdMask').classList.remove('show'); }
+
+  // 设置密码
+  $('pwdSetBtn').addEventListener('click', async function() {
+    var p1 = $('pwdNew').value;
+    var p2 = $('pwdConfirm').value;
+    if (!p1) { $('pwdError').textContent = '请输入密码'; $('pwdError').style.display = ''; return; }
+    if (p1 !== p2) { $('pwdError').textContent = '两次密码不一致'; $('pwdError').style.display = ''; return; }
+    if (p1.length < 4) { $('pwdError').textContent = '密码至少4位'; $('pwdError').style.display = ''; return; }
+    encPwd = p1;
+    localStorage.setItem(ENC_PWD_KEY, encPwd);
+    hidePwdModal();
+    toast('密码已设置，正在加密上传…');
+    syncNow(true);
+  });
+
+  // 解锁
+  $('pwdUnlockBtn').addEventListener('click', async function() {
+    var p = $('pwdInput').value;
+    if (!p) { $('pwdError').textContent = '请输入密码'; $('pwdError').style.display = ''; return; }
+    encPwd = p;
+    localStorage.setItem(ENC_PWD_KEY, encPwd);
+    hidePwdModal();
+    setSyncStatus('busy');
+    syncNow(true);
+  });
+
+  // 回车解锁
+  $('pwdInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); $('pwdUnlockBtn').click(); }
+  });
+  $('pwdConfirm').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); $('pwdSetBtn').click(); }
+  });
+  $('pwdNew').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); $('pwdConfirm').focus(); }
+  });
+
+  // 首次使用时检查是否需要设置加密密码
+  async function checkFirstTimeEnc() {
+    if (encPwd) return; // 已有密码，跳过
+    if (!ghConfig.token || ghConfig.mode === 'local') return; // 本地模式，跳过
+    try {
+      var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
+      var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 45000);
+      if (res.status === 404) { showPwdModal('setup'); return; }
+      if (!res.ok) return;
+      var data = await res.json();
+      var raw = data.content ? data.content.replace(/\n/g, '') : '';
+      var content = raw ? base64ToUtf8(raw) : '{}';
+      if (isEncrypted(content)) {
+        // 云端已加密，需要密码解锁
+        showPwdModal('unlock');
+      }
+      // 云端未加密，不强制设置密码（用户可自行在设置中开启）
+    } catch (e) {}
+  }
+
   /* ================= 初始化 ================= */
   renderLocTags();
   renderRecipientTags();
   render();
   if (ghConfig.token && ghConfig.mode !== 'local') {
-    setSyncStatus('busy');
-    syncNow(false);
-    setInterval(() => { syncNow(false); }, 120000);  // 每2分钟自动同步
+    if (encPwd) {
+      setSyncStatus('busy');
+      syncNow(false);
+    } else {
+      // 检查云端是否已加密，决定是设置密码还是解锁
+      setSyncStatus('busy');
+      checkFirstTimeEnc().then(function() {
+        if (encPwd) syncNow(false);
+      });
+    }
+    setInterval(() => { syncNow(false); }, 120000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { syncNow(false); } });
     window.addEventListener('online', () => { syncNow(false); });
-    // 从后台/内存缓存恢复时，之前的网络请求已被系统中断，解锁后立即重试
     window.addEventListener('pageshow', (e) => { if (e.persisted) { syncing = false; syncNow(false); } });
   } else {
     setSyncStatus('local');
