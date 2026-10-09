@@ -611,7 +611,7 @@
       <input type="text" id="inNote" placeholder="" autocomplete="off">
     </div>
     <div class="field" id="fieldAttention">
-      <label class="att-label"><input type="checkbox" id="inAttention"><span>⭐ 特别注意</span></label>
+      <label class="att-label"><input type="checkbox" id="inAttention"><span>🔥 优先</span></label>
     </div>
     <button class="btn-submit" id="btnSave">提交</button>
   </div>
@@ -1490,7 +1490,7 @@
     if (r.recipient) subText += `<div class="code-recipient">${esc(r.recipient)}</div>`;
     if (r.note) subText += `<div class="code-note">${esc(r.note)}</div>`;
     const recLabel = subText ? `<div class="code-sub">${subText}</div>` : '';
-    const attBadge = att ? '<span class="att-badge">⭐ 特别注意</span>' : '';
+    const attBadge = att ? '<span class="att-badge">🔥 优先</span>' : '';
     return `<div class="card ${isErr ? 'err' : ''} ${taken ? 'taken' : ''} ${isSend ? 'send' : ''} ${att ? 'attention' : ''}" data-card="${r.id}">
       <div class="code-zone">
         <div class="code-main">
