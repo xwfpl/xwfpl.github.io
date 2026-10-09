@@ -557,6 +557,7 @@
   <div class="tool-row">
     <button class="tool-btn" id="btnSync"><span class="t-icon">🔄</span>手动同步</button>
     <button class="tool-btn" id="btnSettings"><span class="t-icon">☁️</span>云同步设置</button>
+    <button class="tool-btn" id="btnEncrypt"><span class="t-icon">🔒</span><span id="encLabel">设置加密</span></button>
     <button class="tool-btn" id="btnExport"><span class="t-icon">📤</span>导出备份</button>
     <button class="tool-btn" id="btnImport"><span class="t-icon">📥</span>导入恢复</button>
     <button class="tool-btn" id="btnClearDone"><span class="t-icon">🧹</span>清空已完成</button>
@@ -697,6 +698,7 @@
       </div>
       <div class="gh-info">ℹ️ 设置后云端数据将加密存储，新设备需密码才能查看。</div>
       <button class="btn-submit" id="pwdSetBtn" style="margin-top:14px">设置密码并加密</button>
+      <button class="btn-submit" id="pwdSkipBtn" style="margin-top:8px;background:#f2f3f5;color:#666;box-shadow:none">暂时不设</button>
     </div>
     <div id="pwdLoginBox" style="display:none">
       <div class="gh-field">
@@ -2332,12 +2334,45 @@
       var raw = data.content ? data.content.replace(/\n/g, '') : '';
       var content = raw ? base64ToUtf8(raw) : '{}';
       if (isEncrypted(content)) {
-        // 云端已加密，需要密码解锁
         showPwdModal('unlock');
+      } else {
+        // 云端未加密，引导用户设置密码
+        showPwdModal('setup');
       }
-      // 云端未加密，不强制设置密码（用户可自行在设置中开启）
     } catch (e) {}
   }
+
+  // 加密按钮：设置或移除密码
+  $('btnEncrypt').addEventListener('click', function() {
+    updateEncLabel();
+    if (encPwd) {
+      // 已有密码，询问是否移除
+      confirmAsk('已设置加密密码。移除后云端数据将不再加密，新设备可直接查看。确定移除？',
+        '确定移除', true,
+        function() {
+          encPwd = '';
+          localStorage.removeItem(ENC_PWD_KEY);
+          updateEncLabel();
+          toast('已移除加密，下次同步后云端数据将不再加密');
+          syncNow(true);
+        }
+      );
+    } else {
+      showPwdModal('setup');
+    }
+  });
+
+  // 暂时不设
+  $('pwdSkipBtn').addEventListener('click', function() {
+    hidePwdModal();
+    syncNow(false);
+  });
+
+  function updateEncLabel() {
+    var el = $('encLabel');
+    if (el) el.textContent = encPwd ? '已加密 ✓' : '设置加密';
+  }
+  updateEncLabel();
 
   /* ================= 初始化 ================= */
   renderLocTags();
