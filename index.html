@@ -315,7 +315,7 @@
     white-space: nowrap; cursor: pointer; line-height: 1.4; }
   .sim-badge:active { background: #ffccc7; }
   /* 多行取件码输入框：回车换行、可滚到多条，整体略高以提示可多行 */
-  #inCode { resize: none; height: 60px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+  #inCode { resize: none; height: 80px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
   #inCode::-webkit-scrollbar { width: 4px; }
   #inCode::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
   .quick-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
@@ -591,8 +591,9 @@
     </div>
     <div class="field" id="fCode">
       <label>取件码 / 单号<span class="req">*</span></label>
-      <textarea id="inCode" rows="1" placeholder="取件码，每行一个
-多地点格式：地点:取件码" autocomplete="off" enterkeyhint="enter"></textarea>
+      <textarea id="inCode" rows="2" placeholder="每行一个取件码
+多地点格式：地点:取件码
+如：富乐新苑正门:08781169" autocomplete="off"></textarea>
       <div class="err">取件码不能为空哦</div>
       <div class="code-hint"><span class="batch-badge" id="batchBadge"></span><span class="sim-badge" id="simBadge"></span></div>
     </div>
@@ -1743,7 +1744,11 @@
   });
   $('inCode').addEventListener('blur', () => { clearTimeout(fmtTimer); formatCodeLines(true); });
   $('inCode').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { clearTimeout(fmtTimer); formatCodeLines(true); }
+    if (e.key === 'Enter') {
+      // 允许 textarea 正常换行（不阻止默认行为），仅延迟格式化
+      clearTimeout(fmtTimer);
+      fmtTimer = setTimeout(() => { formatCodeLines(true); updateBatchUI(); }, 200);
+    }
     // 退格：光标紧跟自动插入的横杠时，连同前面的数字一起删，避免“删不动”
     if (e.key === 'Backspace') {
       const el = $('inCode');
