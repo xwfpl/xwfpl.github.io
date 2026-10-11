@@ -297,7 +297,7 @@
   .remind-img-placeholder { font-size: 14px; color: var(--text-3); }
   .remind-img-preview { width: 100%; max-height: 240px; object-fit: contain; border-radius: 8px; }
   .remind-img-remove { margin-top: 6px; font-size: 12px; color: var(--danger); background: none; border: none; cursor: pointer; }
-  .remind-big-img { max-width: 90%; max-height: 80vh; object-fit: contain; border-radius: 8px; }
+  .remind-big-img { max-width: 100vw; max-height: 100vh; object-fit: contain; }
 
   /* ===== 模态框 ===== */
   .modal-mask {
@@ -1092,13 +1092,13 @@
     return [...map.values()].filter(r => !(r.deleted && r.deletedAt && r.deletedAt < cutoff));
   }
 
-  // 图片压缩：限制最长边 800px，quality 0.7
+  // 图片压缩：限制最长边 1600px，quality 0.85（高清）
   function compressImage(file, cb) {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 800;
+        const MAX = 1600;
         let w = img.width, h = img.height;
         if (w > MAX || h > MAX) {
           if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -1107,7 +1107,7 @@
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        cb(canvas.toDataURL('image/jpeg', 0.7));
+        cb(canvas.toDataURL('image/jpeg', 0.85));
       };
       img.src = reader.result;
     };
@@ -1153,12 +1153,11 @@
     el.innerHTML = active.map(r => {
       const cd = countdownText(r.deadline);
       const cardCls = cd.cls === 'overdue' ? 'overdue' : (cd.cls === 'urgent' ? 'urgent' : '');
-      const imgHtml = r.image ? `<img class="remind-img-thumb" src="${r.image}" data-remind-img="${r.id}">` : '';
+      const imgIcon = r.image ? ' 📷' : '';
       return `<div class="remind-card ${cardCls}">
-        ${imgHtml}
         <div class="remind-body">
           <div class="remind-info">
-            <div class="remind-name">${esc(r.title)}</div>
+            <div class="remind-name">${esc(r.title)}${imgIcon}</div>
             <div class="remind-deadline">📅 ${fmtDeadline(r.deadline)}</div>
           </div>
           <span class="remind-countdown ${cd.cls}">${cd.text}</span>
@@ -2510,7 +2509,7 @@
     toast('提醒已保存 ⏰');
   });
 
-  // 提醒列表交互：删除、点图看大图
+  // 提醒列表交互：删除、点卡片看大图
   $('list').addEventListener('click', e => {
     if (curTab !== 'reminder') return;
     const delBtn = e.target.closest('[data-remind-del]');
@@ -2528,12 +2527,17 @@
       });
       return;
     }
-    const img = e.target.closest('[data-remind-img]');
-    if (img) {
-      const r = reminders.find(x => x.id === img.dataset.remindImg && !x.deleted);
-      if (r && r.image) {
-        $('remindBigImg').src = r.image;
-        $('remindBigMask').classList.add('show');
+    // 点卡片（有图片时）打开全屏大图
+    const card = e.target.closest('.remind-card');
+    if (card) {
+      const nameEl = card.querySelector('.remind-name');
+      if (nameEl && nameEl.textContent.indexOf('📷') >= 0) {
+        const id = card.querySelector('[data-remind-del]').dataset.remindDel;
+        const r = reminders.find(x => x.id === id && !x.deleted);
+        if (r && r.image) {
+          $('remindBigImg').src = r.image;
+          $('remindBigMask').classList.add('show');
+        }
       }
     }
   });
