@@ -746,8 +746,8 @@
       <input type="text" id="inRemindName" placeholder="如：退货截止、活动报名…" autocomplete="off">
     </div>
     <div class="field">
-      <label>截止日期时间<span class="req">*</span></label>
-      <input type="datetime-local" id="inRemindDeadline" style="font-size:16px;">
+      <label>截止日期<span class="req">*</span></label>
+      <input type="date" id="inRemindDeadline" style="font-size:16px;">
     </div>
     <div class="field">
       <label>上传图片（可选）</label>
@@ -1116,25 +1116,21 @@
 
   // 倒计时文本
   function countdownText(deadline) {
-    const now = Date.now();
-    const diff = deadline - now;
-    if (diff <= 0) {
-      const past = Math.abs(diff);
-      const days = Math.floor(past / 86400000);
-      const hours = Math.floor((past % 86400000) / 3600000);
-      return { text: days > 0 ? `已过期${days}天${hours}时` : `已过期${hours}时`, cls: 'overdue' };
-    }
-    const days = Math.floor(diff / 86400000);
-    const hours = Math.floor((diff % 86400000) / 3600000);
-    if (days <= 0) return { text: `仅剩${hours}时`, cls: 'urgent' };
-    if (days <= 3) return { text: `剩${days}天${hours}时`, cls: 'urgent' };
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const dl = new Date(deadline);
+    dl.setHours(0, 0, 0, 0);
+    const diff = dl - now;
+    const days = Math.round(diff / 86400000);
+    if (days < 0) return { text: `已过期${Math.abs(days)}天`, cls: 'overdue' };
+    if (days === 0) return { text: '今天截止', cls: 'urgent' };
+    if (days <= 3) return { text: `剩${days}天`, cls: 'urgent' };
     return { text: `剩${days}天`, cls: 'normal' };
   }
 
   function fmtDeadline(ts) {
     const d = new Date(ts);
-    const p = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
   }
 
   function renderReminders() {
@@ -2450,7 +2446,7 @@
     if (rec && rec.deadline) {
       const d = new Date(rec.deadline);
       const p = n => String(n).padStart(2, '0');
-      $('inRemindDeadline').value = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+      $('inRemindDeadline').value = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
     } else {
       $('inRemindDeadline').value = '';
     }
