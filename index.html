@@ -260,6 +260,45 @@
   }
   .fab:active { transform: scale(.9); }
 
+  /* ===== 提醒卡片 ===== */
+  .remind-card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    overflow: hidden; animation: fadeIn .25s ease;
+    display: flex; flex-direction: column;
+  }
+  .remind-card.overdue { border-color: var(--danger); border-width: 1.5px; }
+  .remind-card.urgent { border-color: #ffa726; border-width: 1.5px; }
+  .remind-img-thumb {
+    width: 100%; max-height: 200px; object-fit: cover; cursor: pointer;
+    display: block; background: #f5f5f5;
+  }
+  .remind-body { padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .remind-info { flex: 1; min-width: 0; }
+  .remind-name { font-size: 16px; font-weight: 700; color: var(--text); word-break: break-word; }
+  .remind-deadline { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .remind-countdown {
+    flex: none; font-size: 14px; font-weight: 800; padding: 5px 12px;
+    border-radius: 999px; white-space: nowrap; line-height: 1.2;
+  }
+  .remind-countdown.overdue { background: #fff1f0; color: var(--danger); border: 1.5px solid #ffa39e; }
+  .remind-countdown.urgent { background: #fff8e1; color: #e65100; border: 1.5px solid #ffcc80; }
+  .remind-countdown.normal { background: #e8f5e9; color: #2e7d32; border: 1.5px solid #a5d6a7; }
+  .remind-del {
+    flex: none; font-size: 18px; color: var(--text-3); background: none; border: none;
+    padding: 4px 6px; cursor: pointer; transition: color .12s;
+  }
+  .remind-del:active { color: var(--danger); }
+  .remind-img-area {
+    border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center;
+    cursor: pointer; transition: border-color .15s;
+  }
+  .remind-img-area:active { border-color: var(--primary); }
+  .remind-img-placeholder { font-size: 14px; color: var(--text-3); }
+  .remind-img-preview { width: 100%; max-height: 240px; object-fit: contain; border-radius: 8px; }
+  .remind-img-remove { margin-top: 6px; font-size: 12px; color: var(--danger); background: none; border: none; cursor: pointer; }
+  .remind-big-img { max-width: 90%; max-height: 80vh; object-fit: contain; border-radius: 8px; }
+
   /* ===== 模态框 ===== */
   .modal-mask {
     position: fixed; inset: 0; background: rgba(20, 24, 32, .5);
@@ -582,6 +621,7 @@
   <button class="tab" data-tab="done">已取<span class="cnt" id="cntDone"></span></button>
   <button class="tab" data-tab="send">寄件码<span class="cnt" id="cntSend"></span></button>
   <button class="tab" data-tab="err">错误<span class="cnt" id="cntErr"></span></button>
+  <button class="tab" data-tab="reminder">提醒<span class="cnt" id="cntReminder"></span></button>
 </div>
 
 <!-- 列表 -->
@@ -692,6 +732,40 @@
     <button class="act-item del" id="actDel">🗑 删除</button>
     <button class="act-cancel" id="actCancel">取消</button>
   </div>
+</div>
+
+<!-- 提醒表单 -->
+<div class="modal-mask" id="remindMask">
+  <div class="modal">
+    <div class="m-head">
+      <h3 id="remindTitle">⏰ 新建提醒</h3>
+      <button class="m-close" id="remindClose">✕</button>
+    </div>
+    <div class="field">
+      <label>标题<span class="req">*</span></label>
+      <input type="text" id="inRemindName" placeholder="如：退货截止、活动报名…" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>截止日期时间<span class="req">*</span></label>
+      <input type="datetime-local" id="inRemindDeadline" style="font-size:16px;">
+    </div>
+    <div class="field">
+      <label>上传图片（可选）</label>
+      <div class="remind-img-area" id="remindImgArea">
+        <input type="file" id="inRemindImg" accept="image/*" style="display:none">
+        <div class="remind-img-placeholder" id="remindImgPlaceholder">📷 点击上传图片</div>
+        <img class="remind-img-preview" id="remindImgPreview" style="display:none;">
+      </div>
+      <button class="remind-img-remove" id="remindImgRemove" style="display:none;">移除图片</button>
+    </div>
+    <button class="btn-submit" id="btnRemindSave">保存</button>
+  </div>
+</div>
+
+<!-- 提醒图片大图 -->
+<div class="bigcode-mask" id="remindBigMask">
+  <button class="b-close" id="remindBigClose">✕</button>
+  <img class="remind-big-img" id="remindBigImg">
 </div>
 
 </div>
@@ -993,6 +1067,106 @@
   let records = loadLocal();
 
   function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+
+  /* ================= 提醒数据层 ================= */
+  const REMINDERS_KEY = 'pickup_reminders_v1';
+  function loadReminders() {
+    let arr = [];
+    try { arr = JSON.parse(localStorage.getItem(REMINDERS_KEY)) || []; } catch (e) { arr = []; }
+    arr.forEach(r => { if (!r.updatedAt) r.updatedAt = r.createdAt || Date.now(); });
+    return arr;
+  }
+  function saveRemindersLocal() { localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders)); }
+  let reminders = loadReminders();
+  let editingReminderId = null;
+
+  function mergeReminders(local, cloud) {
+    const map = new Map();
+    const put = r => {
+      if (!r || !r.id) return;
+      const old = map.get(r.id);
+      if (!old || (r.updatedAt || 0) >= (old.updatedAt || 0)) map.set(r.id, r);
+    };
+    local.forEach(put); (cloud || []).forEach(put);
+    const cutoff = Date.now() - 7 * 864e5;
+    return [...map.values()].filter(r => !(r.deleted && r.deletedAt && r.deletedAt < cutoff));
+  }
+
+  // 图片压缩：限制最长边 800px，quality 0.7
+  function compressImage(file, cb) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 800;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        cb(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // 倒计时文本
+  function countdownText(deadline) {
+    const now = Date.now();
+    const diff = deadline - now;
+    if (diff <= 0) {
+      const past = Math.abs(diff);
+      const days = Math.floor(past / 86400000);
+      const hours = Math.floor((past % 86400000) / 3600000);
+      return { text: days > 0 ? `已过期${days}天${hours}时` : `已过期${hours}时`, cls: 'overdue' };
+    }
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    if (days <= 0) return { text: `仅剩${hours}时`, cls: 'urgent' };
+    if (days <= 3) return { text: `剩${days}天${hours}时`, cls: 'urgent' };
+    return { text: `剩${days}天`, cls: 'normal' };
+  }
+
+  function fmtDeadline(ts) {
+    const d = new Date(ts);
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  function renderReminders() {
+    const el = $('list');
+    const active = reminders.filter(r => !r.deleted);
+    $('cntReminder').textContent = active.length ? ` ${active.length}` : '';
+    if (!active.length) {
+      el.innerHTML = `<div class="empty">
+        <div class="e-icon">⏰</div>
+        <p>还没有提醒事项</p>
+        <div class="hint">点击右下角 ＋ 创建提醒，支持图片和截止日期倒计时</div>
+      </div>`;
+      return;
+    }
+    active.sort((a, b) => (a.deadline || 0) - (b.deadline || 0));
+    el.innerHTML = active.map(r => {
+      const cd = countdownText(r.deadline);
+      const cardCls = cd.cls === 'overdue' ? 'overdue' : (cd.cls === 'urgent' ? 'urgent' : '');
+      const imgHtml = r.image ? `<img class="remind-img-thumb" src="${r.image}" data-remind-img="${r.id}">` : '';
+      return `<div class="remind-card ${cardCls}">
+        ${imgHtml}
+        <div class="remind-body">
+          <div class="remind-info">
+            <div class="remind-name">${esc(r.title)}</div>
+            <div class="remind-deadline">📅 ${fmtDeadline(r.deadline)}</div>
+          </div>
+          <span class="remind-countdown ${cd.cls}">${cd.text}</span>
+          <button class="remind-del" data-remind-del="${r.id}">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
   function visRecords() { return records.filter(r => !r.deleted && r.code); }
   function touch(r) { r.updatedAt = Date.now(); }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
@@ -1129,16 +1303,16 @@
   async function apiGet() {
     var url = ghApiBase() + '/contents/' + ghConfig.dataFile + '?ref=' + ghConfig.branch;
     var res = await fetchWithTimeout(url, { headers: ghHeaders(), cache: 'no-store' }, 45000);
-    if (res.status === 404) return { records: [], places: [], deletedPlaces: [], recipients: [], deletedRecipients: [], _sha: null };
+    if (res.status === 404) return { records: [], places: [], deletedPlaces: [], recipients: [], deletedRecipients: [], reminders: [], _sha: null };
     if (!res.ok) throw new Error('GET failed: ' + res.status);
     var data = await res.json();
     var raw = data.content ? data.content.replace(/\n/g, '') : '';
     var content = raw ? base64ToUtf8(raw) : '{}';
     var parsed = JSON.parse(content);
-    return { records: parsed.records || [], places: parsed.places || [], deletedPlaces: parsed.deletedPlaces || [], recipients: parsed.recipients || [], deletedRecipients: parsed.deletedRecipients || [], _sha: data.sha };
+    return { records: parsed.records || [], places: parsed.places || [], deletedPlaces: parsed.deletedPlaces || [], recipients: parsed.recipients || [], deletedRecipients: parsed.deletedRecipients || [], reminders: parsed.reminders || [], _sha: data.sha };
   }
   async function apiPost(recs, sha) {
-    var jsonStr = JSON.stringify({ records: recs, places: places, deletedPlaces: deletedPlaces, recipients: recipients, deletedRecipients: deletedRecipients });
+    var jsonStr = JSON.stringify({ records: recs, places: places, deletedPlaces: deletedPlaces, recipients: recipients, deletedRecipients: deletedRecipients, reminders: reminders });
     var content = utf8ToBase64(jsonStr);
     var putUrl = ghApiBase() + '/contents/' + ghConfig.dataFile;
     var bodyObj = { message: 'sync pickup codes', content: content, branch: ghConfig.branch };
@@ -1214,12 +1388,20 @@
         deletedRecipients = rm.deletedRecipients;
         saveRecipientsLocal(); renderRecipientTags(); renderRecipientsList();
       }
+      // 合并提醒
+      var mergedRems = mergeReminders(reminders, cloud.reminders || []);
+      var remSig = function(arr) { return JSON.stringify(arr.slice().sort(function(a, b) { return a.id < b.id ? -1 : 1; })); };
+      if (remSig(mergedRems) !== remSig(reminders)) {
+        reminders = mergedRems; saveRemindersLocal();
+        if (curTab === 'reminder') render();
+      }
       // 判断是否需要上传
       var needUpload = sig(merged) !== sig(cloud.records || [])
         || JSON.stringify(places) !== JSON.stringify(cloud.places || [])
         || JSON.stringify(deletedPlaces) !== JSON.stringify(cloud.deletedPlaces || [])
         || JSON.stringify(recipients) !== JSON.stringify(cloud.recipients || [])
-        || JSON.stringify(deletedRecipients) !== JSON.stringify(cloud.deletedRecipients || []);
+        || JSON.stringify(deletedRecipients) !== JSON.stringify(cloud.deletedRecipients || [])
+        || remSig(reminders) !== remSig(cloud.reminders || []);
       if (needUpload) {
         try {
           await apiPost(merged, cloud._sha);
@@ -1235,6 +1417,11 @@
             var rm2 = mergeRecipients(recipients, cloud2.recipients || [], deletedRecipients, cloud2.deletedRecipients || []);
             recipients = rm2.recipients;
             deletedRecipients = rm2.deletedRecipients;
+            var mergedRems2 = mergeReminders(reminders, cloud2.reminders || []);
+            if (remSig(mergedRems2) !== remSig(reminders)) {
+              reminders = mergedRems2; saveRemindersLocal();
+              if (curTab === 'reminder') render();
+            }
             if (sig(merged2) !== sig(records)) {
               records = merged2; saveLocal(); render();
             } else {
@@ -1290,6 +1477,7 @@
   const $ = id => document.getElementById(id);
 
   function render() {
+    if (curTab === 'reminder') { renderReminders(); return; }
     const vis = visRecords();
     const actAt = r => r.takenAt || r.errAt || r.createdAt;          // 记录最近活跃时间
     const err = vis.filter(r => r.errAt);                            // 错误记录（独立一类）
@@ -1746,7 +1934,10 @@
   function closeConfirm() { $('confirmMask').classList.remove('show'); confirmAction = null; confirmOverwriteAction = null; }
 
   /* ================= 事件 ================= */
-  $('fab').addEventListener('click', () => openForm(null));
+  $('fab').addEventListener('click', () => {
+    if (curTab === 'reminder') openRemindForm(null);
+    else openForm(null);
+  });
   $('typeSwitch').addEventListener('click', e => {
     const b = e.target.closest('.type-btn');
     if (b) setType(b.dataset.type);
@@ -2250,6 +2441,104 @@
     if (!ghConfig.token || ghConfig.mode === 'local') { toast('请先配置 GitHub 云同步'); return; }
     syncNow(true);
   });
+
+  /* ================= 提醒表单 ================= */
+  let remindImgData = null;
+  function openRemindForm(rec) {
+    editingReminderId = rec ? rec.id : null;
+    $('remindTitle').textContent = rec ? '编辑提醒' : '⏰ 新建提醒';
+    $('inRemindName').value = rec ? rec.title || '' : '';
+    if (rec && rec.deadline) {
+      const d = new Date(rec.deadline);
+      const p = n => String(n).padStart(2, '0');
+      $('inRemindDeadline').value = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    } else {
+      $('inRemindDeadline').value = '';
+    }
+    remindImgData = (rec && rec.image) || null;
+    if (remindImgData) {
+      $('remindImgPreview').src = remindImgData;
+      $('remindImgPreview').style.display = 'block';
+      $('remindImgPlaceholder').style.display = 'none';
+      $('remindImgRemove').style.display = 'block';
+    } else {
+      $('remindImgPreview').style.display = 'none';
+      $('remindImgPlaceholder').style.display = 'block';
+      $('remindImgRemove').style.display = 'none';
+    }
+    $('remindMask').classList.add('show');
+    setTimeout(() => $('inRemindName').focus(), 260);
+  }
+  function closeRemindForm() { $('remindMask').classList.remove('show'); editingReminderId = null; remindImgData = null; }
+
+  $('remindClose').addEventListener('click', closeRemindForm);
+  $('remindMask').addEventListener('click', e => { if (e.target === $('remindMask')) closeRemindForm(); });
+  $('remindImgArea').addEventListener('click', () => $('inRemindImg').click());
+  $('inRemindImg').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    compressImage(file, data => {
+      remindImgData = data;
+      $('remindImgPreview').src = data;
+      $('remindImgPreview').style.display = 'block';
+      $('remindImgPlaceholder').style.display = 'none';
+      $('remindImgRemove').style.display = 'block';
+    });
+    e.target.value = '';
+  });
+  $('remindImgRemove').addEventListener('click', e => {
+    e.stopPropagation();
+    remindImgData = null;
+    $('remindImgPreview').style.display = 'none';
+    $('remindImgPlaceholder').style.display = 'block';
+    $('remindImgRemove').style.display = 'none';
+  });
+  $('btnRemindSave').addEventListener('click', () => {
+    const name = $('inRemindName').value.trim();
+    const dlVal = $('inRemindDeadline').value;
+    if (!name) { toast('请输入标题'); return; }
+    if (!dlVal) { toast('请选择截止日期'); return; }
+    const deadline = new Date(dlVal).getTime();
+    const now = Date.now();
+    if (editingReminderId) {
+      const r = reminders.find(x => x.id === editingReminderId);
+      if (r) { r.title = name; r.deadline = deadline; r.image = remindImgData || null; r.updatedAt = now; }
+    } else {
+      reminders.push({ id: uid(), title: name, deadline: deadline, image: remindImgData || null, createdAt: now, updatedAt: now });
+    }
+    saveRemindersLocal(); closeRemindForm(); render(); scheduleSync();
+    toast('提醒已保存 ⏰');
+  });
+
+  // 提醒列表交互：删除、点图看大图
+  $('list').addEventListener('click', e => {
+    if (curTab !== 'reminder') return;
+    const delBtn = e.target.closest('[data-remind-del]');
+    if (delBtn) {
+      const id = delBtn.dataset.remindDel;
+      confirmAsk('删除这个提醒？', '删除', false, () => {
+        const idx = reminders.findIndex(r => r.id === id);
+        if (idx >= 0) {
+          reminders[idx].deleted = true;
+          reminders[idx].deletedAt = Date.now();
+          reminders[idx].updatedAt = Date.now();
+          saveRemindersLocal(); render(); scheduleSync();
+          toast('提醒已删除');
+        }
+      });
+      return;
+    }
+    const img = e.target.closest('[data-remind-img]');
+    if (img) {
+      const r = reminders.find(x => x.id === img.dataset.remindImg && !x.deleted);
+      if (r && r.image) {
+        $('remindBigImg').src = r.image;
+        $('remindBigMask').classList.add('show');
+      }
+    }
+  });
+  $('remindBigMask').addEventListener('click', () => $('remindBigMask').classList.remove('show'));
+  $('remindBigClose').addEventListener('click', e => { e.stopPropagation(); $('remindBigMask').classList.remove('show'); });
 
   /* ================= 初始化 ================= */
   renderLocTags();
