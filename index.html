@@ -1135,7 +1135,17 @@
 
   function renderReminders() {
     const el = $('list');
-    const active = reminders.filter(r => !r.deleted);
+    // 自动清理已过期的提醒（直接删除，不留存）
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let cleaned = false;
+    reminders = reminders.filter(r => {
+      if (r.deleted) return false;
+      const dl = new Date(r.deadline); dl.setHours(0, 0, 0, 0);
+      if (dl < today) { cleaned = true; return false; }
+      return true;
+    });
+    if (cleaned) { saveRemindersLocal(); scheduleSync(); }
+    const active = reminders;
     $('cntReminder').textContent = active.length ? ` ${active.length}` : '';
     if (!active.length) {
       el.innerHTML = `<div class="empty">
@@ -1148,7 +1158,7 @@
     active.sort((a, b) => (a.deadline || 0) - (b.deadline || 0));
     el.innerHTML = active.map(r => {
       const cd = countdownText(r.deadline);
-      const cardCls = cd.cls === 'overdue' ? 'overdue' : (cd.cls === 'urgent' ? 'urgent' : '');
+      const cardCls = cd.cls === 'urgent' ? 'urgent' : '';
       const imgIcon = r.image ? ' 📷' : '';
       return `<div class="remind-card ${cardCls}">
         <div class="remind-body">
