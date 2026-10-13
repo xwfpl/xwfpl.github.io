@@ -1608,7 +1608,7 @@
     const recLabel = subText ? `<div class="code-sub">${subText}</div>` : '';
     const attBadge = att
       ? '<span class="att-badge">🔥 优先</span>'
-      : (!taken && !isErr && !isSend && days > 5 ? '<span class="auto-att-badge">（优先）</span>' : '');
+      : (!taken && !isErr && !isSend && days >= 5 ? '<span class="auto-att-badge">（优先）</span>' : '');
     return `<div class="card ${isErr ? 'err' : ''} ${taken ? 'taken' : ''} ${isSend ? 'send' : ''} ${att ? 'attention' : ''}" data-card="${r.id}">
       <div class="code-zone">
         <div class="code-main">
