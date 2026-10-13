@@ -400,6 +400,10 @@
     background: #fff1f0; color: #cf1322; font-weight: 800; font-size: 11px;
     border: 1.5px solid #ffa39e; border-radius: 6px; padding: 2px 6px; white-space: nowrap;
     animation: attPulse 1.8s ease-in-out infinite; }
+  /* 超5天自动「优先」标签 */
+  .auto-att-badge { display: inline-flex; align-items: center; flex-shrink: 0;
+    background: #fff7e6; color: #d46b08; font-weight: 800; font-size: 11px;
+    border: 1.5px solid #ffd591; border-radius: 6px; padding: 2px 6px; white-space: nowrap; }
   @keyframes attPulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(232,70,42,0); }
     50% { box-shadow: 0 0 4px 2px rgba(232,70,42,0.25); }
@@ -1602,7 +1606,9 @@
     if (r.recipient) subText += `<div class="code-recipient">${esc(r.recipient)}</div>`;
     if (r.note) subText += `<div class="code-note">${esc(r.note)}</div>`;
     const recLabel = subText ? `<div class="code-sub">${subText}</div>` : '';
-    const attBadge = att ? '<span class="att-badge">🔥 优先</span>' : '';
+    const attBadge = att
+      ? '<span class="att-badge">🔥 优先</span>'
+      : (!taken && !isErr && !isSend && days > 5 ? '<span class="auto-att-badge">（优先）</span>' : '');
     return `<div class="card ${isErr ? 'err' : ''} ${taken ? 'taken' : ''} ${isSend ? 'send' : ''} ${att ? 'attention' : ''}" data-card="${r.id}">
       <div class="code-zone">
         <div class="code-main">
