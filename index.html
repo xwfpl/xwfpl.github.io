@@ -1563,6 +1563,8 @@
         : (isSendGroup ? '寄件码' : (g.name || '未指定地点'));
       const attCnt = g.items.filter(r => r.attention).length;
       const attBadge = attCnt ? '<span class="att-badge">🔥</span>' : '';
+      const autoAttCnt = g.items.filter(r => !r.errAt && !r.takenAt && r.type !== 'send' && daysSince(r.createdAt || r.updatedAt) > 5).length;
+      const autoAttBadge = autoAttCnt ? '<span class="auto-att-badge">（优先）</span>' : '';
       return `<div class="group">
         <div class="group-head ${isSendGroup ? 'send-head' : ''}" data-group="${esc(g.name)}">
           <div class="g-left">
@@ -1570,6 +1572,7 @@
             <span class="g-icon">${isSendGroup ? '📮' : (g.name ? '📍' : '❔')}</span>
             <span class="g-name">${esc(displayName)}</span>
             ${attBadge}
+            ${autoAttBadge}
             <span class="g-cnt ${isSendGroup ? 'send-cnt' : ''}">${cntText}</span>
           </div>
         </div>
